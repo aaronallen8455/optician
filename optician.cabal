@@ -1,0 +1,46 @@
+cabal-version:      3.0
+name:               optician
+version:            0.1.0.0
+synopsis:           GHC plugin for generating optics
+-- description:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Aaron Allen
+maintainer:         aaronallen8455@gmail.com
+-- copyright:
+category:           Data
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  Optician,
+                      Optician.Types
+    other-modules: Optician.GhcFacade,
+                   Optician.Inputs,
+                   Optician.Solve,
+                   Optician.Rewrite
+    -- other-extensions:
+    default-extensions: LambdaCase
+    build-depends:    base >=4.17.0.0,
+                      optics-core >= 0.4,
+                      ghc-tcplugin-api >= 0.10,
+                      ghc >= 9.4
+    hs-source-dirs:   src
+    default-language: GHC2021
+
+test-suite optician-test
+    import:           warnings
+    default-language: GHC2021
+    -- other-modules:
+    -- other-extensions:
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    build-depends:
+        base ^>=4.18.0.0,
+        optician
