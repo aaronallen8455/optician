@@ -13,6 +13,9 @@ data Inputs = MkInputs
   { getOpticKindTyCon :: P.TyCon
   , aLensType :: P.TcType
   , aPrismType :: P.TcType
+  , genOpticClass :: P.Class
+  , mkLensId :: P.Id
+  , mkPrismId :: P.Id
   }
 
 lookupInputs :: P.TcPluginM P.Init Inputs
@@ -23,9 +26,14 @@ lookupInputs = do
     P.Found _ typesMod -> do
       getOpticKindName <- P.lookupOrig typesMod (P.mkTcOcc "GetOpticKind")
       getOpticKindTyCon <- P.lookupTyCon getOpticKindName
-      aLensName <- P.lookupOrig typesMod (P.mkTcOcc "A_Lens")
-      aLensType <- Ghc.varType <$> P.lookupId aLensName
-      aPrismName <- P.lookupOrig typesMod (P.mkTcOcc "A_Prism")
-      aPrismType <- Ghc.varType <$> P.lookupId aPrismName
-      pure MkInputs{..}
+      aLensName <- P.lookupOrig typesMod (P.mkTcOcc "ALens")
+      mALensType <- Ghc.synTyConRhs_maybe <$> P.lookupTyCon aLensName
+      aPrismName <- P.lookupOrig typesMod (P.mkTcOcc "APrism")
+      mAPrismType <- Ghc.synTyConRhs_maybe <$> P.lookupTyCon aPrismName
+      genOpticClass <- P.tcLookupClass =<< P.lookupOrig typesMod (P.mkTcOcc "GenOptic")
+      mkLensId <- P.tcLookupId =<< P.lookupOrig typesMod (P.mkVarOcc "mkLens")
+      mkPrismId <- P.tcLookupId =<< P.lookupOrig typesMod (P.mkVarOcc "mkPrism")
+      case (,) <$> mALensType <*> mAPrismType of
+        Nothing -> P.panic "Could not get optic types"
+        Just (aLensType, aPrismType) -> pure MkInputs{..}
     _ -> P.panic "Could not find 'Optician.Types'"
