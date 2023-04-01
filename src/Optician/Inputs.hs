@@ -16,6 +16,9 @@ data Inputs = MkInputs
   , genOpticClass :: P.Class
   , mkLensId :: P.Id
   , mkPrismId :: P.Id
+  , eitherTyCon :: P.TyCon
+  , leftDataCon :: P.DataCon
+  , rightDataCon :: P.DataCon
   }
 
 lookupInputs :: P.TcPluginM P.Init Inputs
@@ -33,6 +36,9 @@ lookupInputs = do
       genOpticClass <- P.tcLookupClass =<< P.lookupOrig typesMod (P.mkTcOcc "GenOptic")
       mkLensId <- P.tcLookupId =<< P.lookupOrig typesMod (P.mkVarOcc "mkLens")
       mkPrismId <- P.tcLookupId =<< P.lookupOrig typesMod (P.mkVarOcc "mkPrism")
+      eitherTyCon <- P.lookupTyCon Ghc.eitherTyConName
+      leftDataCon <- P.tcLookupDataCon Ghc.leftDataConName
+      rightDataCon <- P.tcLookupDataCon Ghc.rightDataConName
       case (,) <$> mALensType <*> mAPrismType of
         Nothing -> P.panic "Could not get optic types"
         Just (aLensType, aPrismType) -> pure MkInputs{..}

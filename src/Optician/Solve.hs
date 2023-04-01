@@ -4,13 +4,15 @@ module Optician.Solve
   ( solve
   ) where
 
+import           Data.Bifunctor (first)
 import           Data.Maybe
 import           Data.Traversable
 import qualified GHC.TcPlugin.API as P
-import qualified GHC.TcPlugin.API.Internal as PI
 
 import qualified Optician.GhcFacade as Ghc
 import           Optician.Inputs (Inputs(..))
+import           Optician.Solve.Lens (mkLens, mkFieldEqWanteds)
+import           Optician.Solve.Prism (mkPrism)
 
 solve :: Inputs -> P.TcPluginSolver
 solve inputs _givens wanteds = do
@@ -21,6 +23,7 @@ solve inputs _givens wanteds = do
 
   pure $ P.TcPluginOk (fst <$> solved) (concatMap snd solved)
 
+-- | Identify wanteds for the GenOptic class
 isGenOptic :: Inputs -> P.Ct -> Maybe (P.Ct, [P.Type])
 isGenOptic inputs = \case
   ct@Ghc.CDictCan{..}
@@ -28,16 +31,45 @@ isGenOptic inputs = \case
     -> Just (ct, cc_tyargs)
   _ ->  Nothing
 
+-- seems possible in theory to support existentials using mkSingleAltCase and
+-- dataConrepArgTys, but need to somehow pick the binder that corresponds to
+-- the focused field. Skip over all the things that have kind Type or Constraint?
+--
+-- How it could work:
+-- split the sigma ty of the datacon worker ID to get the free vars and predicates
+-- separated out from the value args tys.
+-- Build a map from the user ty args to the tycon ty args.
+-- Use that map to instantiate the pred types. Is instantiation really necessary?
+-- Check if there are any preds that are different between the s and t types.
+-- Create wanted constraints for those preds if so.
+-- Determine the index position of the focused field in the value arg types.
+-- Check if the focused field has a naughty selector - fail out if so b/c its an existential.
+-- To build the setter arg to 'lens', use mkSingleAltCase with the datacon and the
+-- binder for the s arg. Use the arg types for the constructor worker 'dataConRepArgTys'
+-- to make the binders for the case pattern (see mkDictSelRhs for an example).
+-- Now use mkCoreConApps with the datacon giving it the universal ty args from
+-- the t tyCon, the existential tys using the binders, binders for preds that
+-- did not change, the evidence vars for preds that are still wanted (does this work?),
+-- binders for field values other than the focused field, the b arg binder for the
+-- focused field.
+-- Should reject stupid thetas
+
+-- | Attemps to build an optic to satisfy a GenClass wanted
 buildOptic :: Inputs -> P.Ct -> [P.Type] -> P.TcPluginM P.Solve (Maybe (P.EvTerm, [P.Ct]))
 buildOptic inputs ct [ Ghc.LitTy (Ghc.StrTyLit labelArg)
                       , sArg@(Ghc.TyConApp sTyCon sTyArgs)
-                      , tArg@(Ghc.TyConApp _ tTyArgs)
+                      , tArg@(Ghc.TyConApp tTyCon tTyArgs)
                       , aArg
                       , bArg
                       ]
-  | Just [dataCon] <- mDataCons -- product type
+  -- product type
+  | Just [dataCon] <- mDataCons
+  , sTyCon == tTyCon
+  -- TODO allow existentials and contexts
+  , null (Ghc.dataConExTyCoVars dataCon) -- no existentials allowed
+  , null $ Ghc.dataConTheta dataCon ++ Ghc.dataConStupidTheta dataCon -- no contexts
   = do
-    mExpr <- mkLens inputs dataCon sTyArgs tTyArgs labelArg sArg tArg aArg bArg
+    mExpr <- mkLens inputs dataCon tTyArgs labelArg sArg tArg aArg bArg
     fieldEqWanteds <-
       mkFieldEqWanteds
         (Ghc.ctLoc ct)
@@ -48,105 +80,19 @@ buildOptic inputs ct [ Ghc.LitTy (Ghc.StrTyLit labelArg)
         aArg
         bArg
     pure $ (\expr -> (P.EvExpr expr, fieldEqWanteds)) <$> mExpr
-  | (not . null <$> mDataCons) == Just True
-  = undefined -- sum type
+
+  -- sum type
+  | Just dataCons <- mDataCons
+  , sTyCon == tTyCon
+  , not (null dataCons)
+  = do
+    mExpr <- mkPrism inputs (Ghc.ctLoc ct) dataCons sTyArgs tTyArgs labelArg sArg tArg aArg bArg
+
+    pure $ first P.EvExpr <$> mExpr
+
   where
     mDataCons = Ghc.tyConDataCons_maybe sTyCon
 buildOptic _ _ _ = pure Nothing
-
--- | Create wanted equality constraints for each field in the record so that
--- non-focused fields are the same between s and t and that a and b match
--- the focused field in their respective types.
-mkFieldEqWanteds
-  :: Ghc.CtLoc
-  -> P.FastString
-  -> P.DataCon
-  -> [P.Type]
-  -> [P.Type]
-  -> P.Type
-  -> P.Type
-  -> P.TcPluginM P.Solve [Ghc.Ct]
-mkFieldEqWanteds ctLoc fieldName dataCon sTyArgs tTyArgs aTy bTy = do
-  let sFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon sTyArgs
-      tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon tTyArgs
-      fieldLabels = Ghc.flLabel <$> Ghc.dataConFieldLabels dataCon
-  fmap concat . for (zip3 sFieldTys tFieldTys fieldLabels)
-    $ \(sTy, tTy, label) ->
-      if label == Ghc.FieldLabelString fieldName
-         then do
-           aEq <- mkWantedTypeEquality ctLoc sTy aTy
-           bEq <- mkWantedTypeEquality ctLoc tTy bTy
-           pure [aEq, bEq]
-         else pure <$> mkWantedTypeEquality ctLoc sTy tTy
-
-mkLens
-  :: Inputs
-  -> P.DataCon
-  -> [P.Type] -- type args for "s"
-  -> [P.Type] -- type args for "t"
-  -> P.FastString
-  -> P.Type -- s arg
-  -> P.Type -- t arg
-  -> P.Type -- a arg
-  -> P.Type -- b arg
-  -> P.TcPluginM P.Solve (Maybe P.CoreExpr)
-mkLens inputs dataCon sTyArgs tTyArgs fieldName sArg tArg aArg bArg = do
-  -- TODO check that dataCon is in scope
-  fields <- zipWith (\i (a, b) -> (a, (i, b))) [0 :: Int ..]
-              <$> saturatedSelectors dataCon sTyArgs
-  for (lookup (Ghc.FieldLabelString fieldName) fields)
-      $ \(focusIndex, focusSel) -> do
-    sName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "s")
-    let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy sArg
-    bName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "b")
-    let bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy bArg
-        mkFieldSetterExpr (_, (i, selector)) =
-          if i == focusIndex
-             then Ghc.Var bBinder
-             else Ghc.mkCoreApps selector [Ghc.Var sBinder]
-        setterExpr = Ghc.mkCoreLams [sBinder, bBinder] $
-          Ghc.mkCoreConApps dataCon
-            $ (Ghc.Type <$> tTyArgs)
-           ++ (mkFieldSetterExpr <$> fields)
-
-    pure $
-      Ghc.mkCoreApps
-        (Ghc.Var $ mkLensId inputs)
-        [ Ghc.Type sArg
-        , Ghc.Type tArg
-        , Ghc.Type aArg
-        , Ghc.Type bArg
-        , focusSel
-        , setterExpr
-        ]
-
--- | Returns field selectors with type arguments applied
-saturatedSelectors
-  :: P.DataCon
-  -> [P.Type]
-  -> P.TcPluginM P.Solve [(Ghc.FieldLabelString, Ghc.CoreExpr)]
-saturatedSelectors dataCon tyArgs = do
-  let tcSubst = Ghc.zipTCvSubst (Ghc.dataConUserTyVars dataCon) tyArgs
-  for (Ghc.dataConFieldLabels dataCon) $ \fieldLabel -> do
-    selId <- P.tcLookupId $ Ghc.flSelector fieldLabel
-    pure (Ghc.flLabel fieldLabel, instantiateSelector (Ghc.Var selId) tcSubst)
-
-instantiateSelector :: Ghc.CoreExpr -> Ghc.Subst -> Ghc.CoreExpr
-instantiateSelector sel tcSubst = do
-  case Ghc.splitForAllTyCoVar_maybe (Ghc.exprType sel) of
-    Just (arg, _)
-      | Ghc.isTyVar arg ->
-          let applied = case Ghc.lookupTyVar tcSubst arg of
-                Nothing -> Ghc.mkCoreApps sel [Ghc.Var arg]
-                Just sub -> Ghc.mkCoreApps sel [Ghc.Type sub]
-           in instantiateSelector applied tcSubst
-    _ -> sel
-
-mkWantedTypeEquality :: Ghc.CtLoc -> Ghc.Type -> Ghc.Type -> P.TcPluginM P.Solve Ghc.Ct
-mkWantedTypeEquality ctLoc sTy tTy =
-  fmap Ghc.mkNonCanonical
-    . P.newWanted ctLoc
-    $ P.mkPrimEqPredRole Ghc.Representational sTy tTy
 
 -- Polymorphic updates will be tricky because need some way to know that all
 -- occurrences of a given ty var will be changed by the operation. Need some

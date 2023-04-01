@@ -23,6 +23,9 @@ library
     other-modules: Optician.GhcFacade,
                    Optician.Inputs,
                    Optician.Solve,
+                   Optician.Solve.Lens,
+                   Optician.Solve.Prism,
+                   Optician.Solve.Utils,
                    Optician.Rewrite
     -- other-extensions:
     default-extensions: LambdaCase
@@ -41,6 +44,12 @@ test-suite optician-test
     type:             exitcode-stdio-1.0
     hs-source-dirs:   test
     main-is:          Main.hs
+    ghc-options: -fplugin Optician
     build-depends:
         base ^>=4.18.0.0,
-        optician
+        optician,
+        optics-vl,
+        lens-properties,
+        QuickCheck,
+        tasty,
+        tasty-quickcheck
