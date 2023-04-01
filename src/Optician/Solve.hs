@@ -17,11 +17,11 @@ import           Optician.Solve.Prism (mkPrism)
 solve :: Inputs -> P.TcPluginSolver
 solve inputs _givens wanteds = do
   let wantedGenOptics = mapMaybe (isGenOptic inputs) wanteds
-  solved <- fmap catMaybes $ for wantedGenOptics $ \(ct, args) ->
-    (fmap . fmap) (\(evTerm, newWanteds) -> ((evTerm, ct), newWanteds))
-                  (buildOptic inputs ct args)
+  solved <- for wantedGenOptics $ \(ct, args) ->
+    fmap (first (fmap (, ct)))
+         (buildOptic inputs ct args)
 
-  pure $ P.TcPluginOk (fst <$> solved) (concatMap snd solved)
+  pure $ P.TcPluginOk (mapMaybe fst solved) (concatMap snd solved)
 
 -- | Identify wanteds for the GenOptic class
 isGenOptic :: Inputs -> P.Ct -> Maybe (P.Ct, [P.Type])
@@ -55,7 +55,7 @@ isGenOptic inputs = \case
 -- Should reject stupid thetas
 
 -- | Attemps to build an optic to satisfy a GenClass wanted
-buildOptic :: Inputs -> P.Ct -> [P.Type] -> P.TcPluginM P.Solve (Maybe (P.EvTerm, [P.Ct]))
+buildOptic :: Inputs -> P.Ct -> [P.Type] -> P.TcPluginM P.Solve (Maybe P.EvTerm, [P.Ct])
 buildOptic inputs ct [ Ghc.LitTy (Ghc.StrTyLit labelArg)
                       , sArg@(Ghc.TyConApp sTyCon sTyArgs)
                       , tArg@(Ghc.TyConApp tTyCon tTyArgs)
@@ -79,20 +79,21 @@ buildOptic inputs ct [ Ghc.LitTy (Ghc.StrTyLit labelArg)
         tTyArgs
         aArg
         bArg
-    pure $ (\expr -> (P.EvExpr expr, fieldEqWanteds)) <$> mExpr
+    pure (P.EvExpr <$> mExpr, fieldEqWanteds)
 
   -- sum type
   | Just dataCons <- mDataCons
   , sTyCon == tTyCon
   , not (null dataCons)
   = do
-    mExpr <- mkPrism inputs (Ghc.ctLoc ct) dataCons sTyArgs tTyArgs labelArg sArg tArg aArg bArg
-
-    pure $ first P.EvExpr <$> mExpr
+    eExpr <- mkPrism inputs (Ghc.ctLoc ct) dataCons sTyArgs tTyArgs labelArg sArg tArg aArg bArg
+    pure $ case eExpr of
+      Left ws -> (Nothing, ws)
+      Right expr -> (Just $ P.EvExpr expr, [])
 
   where
     mDataCons = Ghc.tyConDataCons_maybe sTyCon
-buildOptic _ _ _ = pure Nothing
+buildOptic _ _ _ = pure (Nothing, [])
 
 -- Polymorphic updates will be tricky because need some way to know that all
 -- occurrences of a given ty var will be changed by the operation. Need some

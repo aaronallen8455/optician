@@ -5,6 +5,7 @@ module Optician.Solve.Prism
   ) where
 
 import           Data.Foldable (find)
+import           Data.Maybe (catMaybes)
 import qualified GHC.TcPlugin.API as P
 import qualified GHC.TcPlugin.API.Internal as PI
 
@@ -23,31 +24,32 @@ mkPrism
   -> P.Type -- t arg
   -> P.Type -- a arg
   -> P.Type -- b arg
-  -> P.TcPluginM P.Solve (Maybe (P.CoreExpr, [Ghc.Ct]))
+  -> P.TcPluginM P.Solve (Either [Ghc.Ct] P.CoreExpr)
 mkPrism inp ctLoc dataCons sTyArgs tTyArgs focusedCon sArg tArg aArg bArg = do
   let matchFocusedCon = (== focusedCon) . Ghc.occNameFS . Ghc.nameOccName . Ghc.getName
   case find matchFocusedCon dataCons of
-    Nothing -> pure Nothing -- TODO emit custom error
+    Nothing -> pure (Left []) -- TODO emit custom error
     Just dataCon -> do
       sName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "s")
       bName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "b")
       wanteds <- mkPrismEqWanteds ctLoc dataCon sTyArgs tTyArgs aArg bArg
-      let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy sArg
-          bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy bArg
-          mInjectorExpr = mkInjectorExpr dataCon tTyArgs bBinder bArg
-          getterExpr = mkGetterExpr inp dataCon sBinder tArg aArg
-      pure $ do
-        injectorExpr <- mInjectorExpr
-        Just ( Ghc.mkCoreApps (Ghc.Var $ mkPrismId inp)
-                 [ Ghc.Type sArg
-                 , Ghc.Type tArg
-                 , Ghc.Type aArg
-                 , Ghc.Type bArg
-                 , injectorExpr
-                 , getterExpr
-                 ]
-             , wanteds
-             )
+      if not (null wanteds)
+         then pure (Left wanteds)
+         else do
+           let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy sArg
+               bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy bArg
+               mInjectorExpr = mkInjectorExpr dataCon tTyArgs bBinder bArg
+               getterExpr = mkGetterExpr inp dataCon sBinder tArg aArg
+           pure $ do
+             injectorExpr <- maybe (Left []) Right mInjectorExpr
+             Right $ Ghc.mkCoreApps (Ghc.Var $ mkPrismId inp)
+                       [ Ghc.Type sArg
+                         , Ghc.Type tArg
+                         , Ghc.Type aArg
+                         , Ghc.Type bArg
+                         , injectorExpr
+                         , getterExpr
+                         ]
 
 -- | Make an expression of type b -> t
 mkInjectorExpr
@@ -128,6 +130,17 @@ mkPrismEqWanteds ctLoc dataCon sTyArgs tTyArgs aArg bArg = do
       sTupleTy = Ghc.mkBoxedTupleTy sFieldTys
       tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon tTyArgs
       tTupleTy = Ghc.mkBoxedTupleTy tFieldTys
-  aEq <- mkWantedTypeEquality ctLoc aArg sTupleTy
-  bEq <- mkWantedTypeEquality ctLoc bArg tTupleTy
-  pure [aEq, bEq]
+
+  mAEq <-
+    if Ghc.eqType aArg sTupleTy
+       then pure Nothing
+       else Just <$> mkWantedTypeEquality ctLoc aArg sTupleTy
+  mBEq <-
+    if Ghc.eqType bArg tTupleTy
+       then pure Nothing
+       else Just <$> mkWantedTypeEquality ctLoc bArg tTupleTy
+
+  pure $ catMaybes [mAEq, mBEq]
+
+-- TODO emit constraints for the non-focused data cons. They must match between
+-- s and t for the getter to be sound

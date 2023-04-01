@@ -60,7 +60,3 @@ p2 = _Ctor @"Su2"
 
 p3 :: AffineTraversal' Su Double
 p3 = p2 % _1
-
--- evaluating
--- su2 & _Ctor @"Su2" % _2 .~ "yes"
--- causes a crash. Emit wanteds without evidence if types don't match?
