@@ -64,7 +64,7 @@ buildOptic inputs ct [ Ghc.LitTy (Ghc.StrTyLit labelArg)
                       ]
   -- product type
   | Just [dataCon] <- mDataCons
-  , sTyCon == tTyCon
+  , sTyCon == tTyCon -- fail so that the SameBase constraint will attempt to solve this equality
   -- TODO allow existentials and contexts
   , null (Ghc.dataConExTyCoVars dataCon) -- no existentials allowed
   , null $ Ghc.dataConTheta dataCon ++ Ghc.dataConStupidTheta dataCon -- no contexts
@@ -83,8 +83,13 @@ buildOptic inputs ct [ Ghc.LitTy (Ghc.StrTyLit labelArg)
 
   -- sum type
   | Just dataCons <- mDataCons
-  , sTyCon == tTyCon
+  , sTyCon == tTyCon -- fail so that the SameBase constraint will attempt to solve this equality
+  -- don't allow any data cons to have existentials or contexts
   , not (null dataCons)
+  -- TODO should be possible to allow them
+  , all (null . Ghc.dataConExTyCoVars) dataCons -- no existentials allowed
+  , all (null . Ghc.dataConTheta) dataCons -- no contexts
+  , all (null . Ghc.dataConStupidTheta) dataCons
   = do
     eExpr <- mkPrism inputs (Ghc.ctLoc ct) dataCons sTyArgs tTyArgs labelArg sArg tArg aArg bArg
     pure $ case eExpr of

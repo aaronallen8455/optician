@@ -4,8 +4,10 @@ module Optician.Solve.Prism
   ( mkPrism
   ) where
 
-import           Data.Foldable (find)
+import           Control.Monad (zipWithM)
+import qualified Data.List as List
 import           Data.Maybe (catMaybes)
+import           Data.Traversable (for)
 import qualified GHC.TcPlugin.API as P
 import qualified GHC.TcPlugin.API.Internal as PI
 
@@ -27,12 +29,11 @@ mkPrism
   -> P.TcPluginM P.Solve (Either [Ghc.Ct] P.CoreExpr)
 mkPrism inp ctLoc dataCons sTyArgs tTyArgs focusedCon sArg tArg aArg bArg = do
   let matchFocusedCon = (== focusedCon) . Ghc.occNameFS . Ghc.nameOccName . Ghc.getName
-  case find matchFocusedCon dataCons of
-    Nothing -> pure (Left []) -- TODO emit custom error
-    Just dataCon -> do
+  case List.partition matchFocusedCon dataCons of
+    ([dataCon], otherDataCons) -> do
       sName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "s")
       bName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "b")
-      wanteds <- mkPrismEqWanteds ctLoc dataCon sTyArgs tTyArgs aArg bArg
+      wanteds <- mkPrismEqWanteds ctLoc dataCon otherDataCons sTyArgs tTyArgs aArg bArg
       if not (null wanteds)
          then pure (Left wanteds)
          else do
@@ -50,6 +51,7 @@ mkPrism inp ctLoc dataCons sTyArgs tTyArgs focusedCon sArg tArg aArg bArg = do
                          , injectorExpr
                          , getterExpr
                          ]
+    _ -> pure (Left []) -- TODO emit custom error
 
 -- | Make an expression of type b -> t
 mkInjectorExpr
@@ -85,7 +87,8 @@ extractTupleTys = \case
     -> Just (dataCon, tyArgs)
   _ -> Nothing
 
--- | Make an expression of type s -> Either t a
+-- | Make an expression of type s -> Either t a. Assumes that the s arg can
+-- be used for t, type checking is done elsewhere.
 mkGetterExpr
   :: Inputs
   -> P.DataCon
@@ -119,13 +122,14 @@ mkGetterExpr inp dataCon scrutBndr tTy aTy =
 
 mkPrismEqWanteds
   :: Ghc.CtLoc
-  -> Ghc.DataCon
+  -> Ghc.DataCon -- focused
+  -> [Ghc.DataCon] -- non-focused
   -> [Ghc.Type] -- s ty args
   -> [Ghc.Type] -- t ty args
   -> Ghc.Type -- a
   -> Ghc.Type -- b
   -> P.TcPluginM P.Solve [Ghc.Ct]
-mkPrismEqWanteds ctLoc dataCon sTyArgs tTyArgs aArg bArg = do
+mkPrismEqWanteds ctLoc dataCon otherDataCons sTyArgs tTyArgs aArg bArg = do
   let sFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon sTyArgs
       sTupleTy = Ghc.mkBoxedTupleTy sFieldTys
       tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon tTyArgs
@@ -140,7 +144,23 @@ mkPrismEqWanteds ctLoc dataCon sTyArgs tTyArgs aArg bArg = do
        then pure Nothing
        else Just <$> mkWantedTypeEquality ctLoc bArg tTupleTy
 
-  pure $ catMaybes [mAEq, mBEq]
+  -- Ensure that it is safe to use 's' as 't' for any constructor besides the
+  -- focused one (any ty vars that differ must only occur in the focused data con)
+  otherConEqs <- for otherDataCons $ \dc -> do
+    let sTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dc sTyArgs
+        tTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dc tTyArgs
+        checkEq a b
+          | Ghc.eqType a b = pure Nothing
+          | otherwise = Just <$> mkWantedTypeEquality ctLoc a b
+    zipWithM checkEq sTys tTys
 
--- TODO emit constraints for the non-focused data cons. They must match between
--- s and t for the getter to be sound
+  pure $ catMaybes [mAEq, mBEq] ++ concatMap catMaybes otherConEqs
+
+-- GHC simply piles up the irreducible constraints that get emitted and keeps
+-- trying to re-solve the GenOptic instance which emits those same constraints.
+-- Could fish out the CIrredCans from the wanteds and check if they have the
+-- same type as the cts generated here and not reemit if so. Or perhaps just
+-- any of the wanteds, doesn't have to be irred.
+-- Could also have a type family that rewrites to a constraint tuple containing
+-- all the relevant equalities. Then the solver portion simply fails of the
+-- types do not align perfectly. This is how the SameBase family is used.

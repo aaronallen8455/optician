@@ -60,3 +60,13 @@ p2 = _Ctor @"Su2"
 
 p3 :: AffineTraversal' Su Double
 p3 = p2 % _1
+
+data Su2 a
+  = Su21 a
+  | Su22 Int
+
+p4 :: Prism (Su2 ()) (Su2 Int) () Int
+p4 = _Ctor @"Su21"
+
+p5 :: Prism (Su2 ()) (Su2 Int) Int Int
+p5 = _Ctor @"Su22"
