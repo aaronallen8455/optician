@@ -4,54 +4,38 @@ module Optician.Solve.Prism
   ( mkPrism
   ) where
 
-import           Control.Monad (zipWithM)
-import qualified Data.List as List
-import           Data.Maybe (catMaybes)
-import           Data.Traversable (for)
 import qualified GHC.TcPlugin.API as P
 import qualified GHC.TcPlugin.API.Internal as PI
 
 import qualified Optician.GhcFacade as Ghc
 import           Optician.Inputs
-import           Optician.Solve.Utils (mkWantedTypeEquality)
 
 mkPrism
   :: Inputs
-  -> Ghc.CtLoc
-  -> [P.DataCon]
-  -> [P.Type] -- type args for "s"
+  -> P.DataCon -- focused datacon
   -> [P.Type] -- type args for "t"
-  -> P.FastString -- name of focused datacon
   -> P.Type -- s arg
   -> P.Type -- t arg
   -> P.Type -- a arg
   -> P.Type -- b arg
-  -> P.TcPluginM P.Solve (Either [Ghc.Ct] P.CoreExpr)
-mkPrism inp ctLoc dataCons sTyArgs tTyArgs focusedCon sArg tArg aArg bArg = do
-  let matchFocusedCon = (== focusedCon) . Ghc.occNameFS . Ghc.nameOccName . Ghc.getName
-  case List.partition matchFocusedCon dataCons of
-    ([dataCon], otherDataCons) -> do
-      sName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "s")
-      bName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "b")
-      wanteds <- mkPrismEqWanteds ctLoc dataCon otherDataCons sTyArgs tTyArgs aArg bArg
-      if not (null wanteds)
-         then pure (Left wanteds)
-         else do
-           let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy sArg
-               bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy bArg
-               mInjectorExpr = mkInjectorExpr dataCon tTyArgs bBinder bArg
-               getterExpr = mkGetterExpr inp dataCon sBinder tArg aArg
-           pure $ do
-             injectorExpr <- maybe (Left []) Right mInjectorExpr
-             Right $ Ghc.mkCoreApps (Ghc.Var $ mkPrismId inp)
-                       [ Ghc.Type sArg
-                         , Ghc.Type tArg
-                         , Ghc.Type aArg
-                         , Ghc.Type bArg
-                         , injectorExpr
-                         , getterExpr
-                         ]
-    _ -> pure (Left []) -- TODO emit custom error
+  -> P.TcPluginM P.Solve (Maybe P.CoreExpr)
+mkPrism inp dataCon tTyArgs sArg tArg aArg bArg = do
+  sName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "s")
+  bName <- PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "b")
+  let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy sArg
+      bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy bArg
+      mInjectorExpr = mkInjectorExpr dataCon tTyArgs bBinder bArg
+      getterExpr = mkGetterExpr inp dataCon sBinder tArg aArg
+  pure $ do
+    injectorExpr <- mInjectorExpr
+    Just $ Ghc.mkCoreApps (Ghc.Var $ mkPrismId inp)
+             [ Ghc.Type sArg
+             , Ghc.Type tArg
+             , Ghc.Type aArg
+             , Ghc.Type bArg
+             , injectorExpr
+             , getterExpr
+             ]
 
 -- | Make an expression of type b -> t
 mkInjectorExpr
@@ -119,42 +103,6 @@ mkGetterExpr inp dataCon scrutBndr tTy aTy =
         [ Ghc.Alt Ghc.DEFAULT [] leftTExpr
         , conAltCase
         ]
-
-mkPrismEqWanteds
-  :: Ghc.CtLoc
-  -> Ghc.DataCon -- focused
-  -> [Ghc.DataCon] -- non-focused
-  -> [Ghc.Type] -- s ty args
-  -> [Ghc.Type] -- t ty args
-  -> Ghc.Type -- a
-  -> Ghc.Type -- b
-  -> P.TcPluginM P.Solve [Ghc.Ct]
-mkPrismEqWanteds ctLoc dataCon otherDataCons sTyArgs tTyArgs aArg bArg = do
-  let sFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon sTyArgs
-      sTupleTy = Ghc.mkBoxedTupleTy sFieldTys
-      tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon tTyArgs
-      tTupleTy = Ghc.mkBoxedTupleTy tFieldTys
-
-  mAEq <-
-    if Ghc.eqType aArg sTupleTy
-       then pure Nothing
-       else Just <$> mkWantedTypeEquality ctLoc aArg sTupleTy
-  mBEq <-
-    if Ghc.eqType bArg tTupleTy
-       then pure Nothing
-       else Just <$> mkWantedTypeEquality ctLoc bArg tTupleTy
-
-  -- Ensure that it is safe to use 's' as 't' for any constructor besides the
-  -- focused one (any ty vars that differ must only occur in the focused data con)
-  otherConEqs <- for otherDataCons $ \dc -> do
-    let sTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dc sTyArgs
-        tTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dc tTyArgs
-        checkEq a b
-          | Ghc.eqType a b = pure Nothing
-          | otherwise = Just <$> mkWantedTypeEquality ctLoc a b
-    zipWithM checkEq sTys tTys
-
-  pure $ catMaybes [mAEq, mBEq] ++ concatMap catMaybes otherConEqs
 
 -- GHC simply piles up the irreducible constraints that get emitted and keeps
 -- trying to re-solve the GenOptic instance which emits those same constraints.

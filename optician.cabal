@@ -25,8 +25,11 @@ library
                    Optician.Solve,
                    Optician.Solve.Lens,
                    Optician.Solve.Prism,
-                   Optician.Solve.Utils,
-                   Optician.Rewrite
+                   Optician.Rewrite,
+                   Optician.Rewrite.GenTypeEqualities,
+                   Optician.Rewrite.GenTypeEqualities.Lens,
+                   Optician.Rewrite.GenTypeEqualities.Prism,
+                   Optician.Rewrite.GetOpticKind
     -- other-extensions:
     default-extensions: LambdaCase
     build-depends:    base >=4.17.0.0,

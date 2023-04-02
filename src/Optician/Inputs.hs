@@ -19,6 +19,7 @@ data Inputs = MkInputs
   , eitherTyCon :: P.TyCon
   , leftDataCon :: P.DataCon
   , rightDataCon :: P.DataCon
+  , genTypeEqualitiesTyCon :: P.TyCon
   }
 
 lookupInputs :: P.TcPluginM P.Init Inputs
@@ -39,6 +40,8 @@ lookupInputs = do
       eitherTyCon <- P.lookupTyCon Ghc.eitherTyConName
       leftDataCon <- P.tcLookupDataCon Ghc.leftDataConName
       rightDataCon <- P.tcLookupDataCon Ghc.rightDataConName
+      genTypeEqualitiesName <- P.lookupOrig typesMod (P.mkTcOcc "GenTypeEqualities")
+      genTypeEqualitiesTyCon <- P.lookupTyCon genTypeEqualitiesName
       case (,) <$> mALensType <*> mAPrismType of
         Nothing -> P.panic "Could not get optic types"
         Just (aLensType, aPrismType) -> pure MkInputs{..}

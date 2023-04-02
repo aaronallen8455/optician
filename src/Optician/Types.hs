@@ -12,6 +12,7 @@ module Optician.Types
   , APrism
   , mkLens
   , mkPrism
+  , GenTypeEqualities
   ) where
 
 import           Data.Kind
@@ -26,6 +27,7 @@ type APrism = P.A_Prism
 optic :: forall (label :: Symbol) s t a b
        . ( SameBase s t
          , GenOptic label s t a b
+         , GenTypeEqualities label s t a b
          )
       => Optic (GetOpticKind s) '[] s t a b
 optic = genOptic @label
@@ -34,6 +36,7 @@ field :: forall label s t a b
        . ( SameBase s t
          , GenOptic label s t a b
          , GetOpticKind s ~ L.A_Lens
+         , GenTypeEqualities label s t a b
          )
       => L.Lens s t a b
 field = optic @label
@@ -42,6 +45,7 @@ _Ctor :: forall label s t a b
        . ( SameBase s t
          , GenOptic label s t a b
          , GetOpticKind s ~ P.A_Prism
+         , GenTypeEqualities label s t a b
          )
       => P.Prism s t a b
 _Ctor = optic @label
@@ -51,6 +55,9 @@ type SameBase :: k -> k -> Constraint
 type family SameBase s t where
   SameBase (s a) (t b) = SameBase s t
   SameBase s t = s ~ t
+
+type GenTypeEqualities :: Symbol -> Type -> Type -> Type -> Type -> Constraint
+type family GenTypeEqualities label s t a b where
 
 type GenOptic :: Symbol -> Type -> Type -> Type -> Type -> Constraint
 class GenOptic label s t a b where

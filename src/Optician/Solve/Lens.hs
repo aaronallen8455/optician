@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 module Optician.Solve.Lens
   ( mkLens
-  , mkFieldEqWanteds
   ) where
 
 import           Data.Traversable (for)
@@ -10,7 +9,6 @@ import qualified GHC.TcPlugin.API.Internal as PI
 
 import qualified Optician.GhcFacade as Ghc
 import           Optician.Inputs
-import           Optician.Solve.Utils (mkWantedTypeEquality)
 
 -- | Builds the core expr for a lens. This relies on the necessary type equality
 -- checks occurring elsewhere, otherwise unsound expressions can result.
@@ -73,29 +71,3 @@ instantiateSelector sel =
     Just (arg, _) ->
       instantiateSelector $
         Ghc.mkCoreApps sel [Ghc.Type . Ghc.anyTypeOfKind $ Ghc.varType arg]
-
--- | Create wanted equality constraints for each field in the record so that
--- non-focused fields are the same between s and t and that a and b match
--- the focused field in their respective types.
-mkFieldEqWanteds
-  :: Ghc.CtLoc
-  -> P.FastString
-  -> P.DataCon
-  -> [P.Type]
-  -> [P.Type]
-  -> P.Type
-  -> P.Type
-  -> P.TcPluginM P.Solve [Ghc.Ct]
-mkFieldEqWanteds ctLoc fieldName dataCon sTyArgs tTyArgs aTy bTy = do
-  let sFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon sTyArgs
-      tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon tTyArgs
-      fieldLabels = Ghc.flLabel <$> Ghc.dataConFieldLabels dataCon
-  fmap concat . for (zip3 sFieldTys tFieldTys fieldLabels)
-    $ \(sTy, tTy, label) ->
-      if label == Ghc.FieldLabelString fieldName
-         then do
-           -- TODO include field name in ctLoc
-           aEq <- mkWantedTypeEquality ctLoc sTy aTy
-           bEq <- mkWantedTypeEquality ctLoc tTy bTy
-           pure [aEq, bEq]
-         else pure <$> mkWantedTypeEquality ctLoc sTy tTy
