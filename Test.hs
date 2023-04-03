@@ -1,7 +1,9 @@
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -fplugin Optician #-}
 
 import           Optician
+import           Optician.Label
 import           Optics.Optic
 import           Optics.Lens
 import           Optics.Operators
@@ -15,7 +17,7 @@ f = Foo 9 "a"
 data Foo = Foo { a:: Int, aa :: String} deriving Show
 
 test :: Optic A_Lens '[] Foo Foo Int Int
-test = optic @"a" -- lens a $ \x a -> x { a = a }
+test = #a -- optic @"a" -- lens a $ \x a -> x { a = a }
 
 data Bar a b = Bar { b :: a
                    , c :: a
@@ -62,11 +64,18 @@ p3 :: AffineTraversal' Su Double
 p3 = p2 % _1
 
 data Su2 a
-  = Su21 a
+  = Su21 (Maybe a)
   | Su22 Int
 
-p4 :: Prism (Su2 ()) (Su2 Int) () Int
+p4 :: Prism (Su2 ()) (Su2 Int) (Maybe ()) (Maybe Int)
 p4 = _Ctor @"Su21"
 
-p5 :: Prism (Su2 ()) (Su2 Int) Int Int
-p5 = _Ctor @"Su22"
+p5 :: Prism (Su2 a) (Su2 a) (Maybe a) (Maybe a)
+p5 = _Ctor @"Su21"
+
+
+-- p5 :: Prism (Su2 ()) (Su2 Int) Int Int
+-- p5 = _Ctor @"Su22"
+
+p6 :: Prism' (Su2 Double) Double
+p6 = #Su21 % #Just

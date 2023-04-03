@@ -47,12 +47,13 @@ genTypeEqualitiesRewriter inputs _givens
       }
   where
     mDataCons = Ghc.tyConDataCons_maybe sTyCon
-    mkReduction =
+    mkReduction ty =
       P.mkTyFamAppReduction
-        "GetOpticKind"
+        "GenTypeEqualities"
         P.Nominal
-        (getOpticKindTyCon inputs)
+        (genTypeEqualitiesTyCon inputs)
         tyArgs
+        ty
 genTypeEqualitiesRewriter _ _ _ = pure P.TcPluginNoRewrite
 
 mkConstraintFromPairs :: [(P.Type, P.Type)] -> P.Type

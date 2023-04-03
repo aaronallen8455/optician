@@ -1,9 +1,10 @@
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 module Optician.Types
-  ( GenOptic(..)
+  ( GenOptic
   , optic
   , field
   , _Ctor
@@ -13,6 +14,7 @@ module Optician.Types
   , mkLens
   , mkPrism
   , GenTypeEqualities
+  , SameBase
   ) where
 
 import           Data.Kind
@@ -29,7 +31,7 @@ optic :: forall (label :: Symbol) s t a b
          , GenOptic label s t a b
          , GenTypeEqualities label s t a b
          )
-      => Optic (GetOpticKind s) '[] s t a b
+      => Optic (GetOpticKind s) NoIx s t a b
 optic = genOptic @label
 
 field :: forall label s t a b
@@ -43,9 +45,9 @@ field = optic @label
 
 _Ctor :: forall label s t a b
        . ( SameBase s t
+         , GenTypeEqualities label s t a b
          , GenOptic label s t a b
          , GetOpticKind s ~ P.A_Prism
-         , GenTypeEqualities label s t a b
          )
       => P.Prism s t a b
 _Ctor = optic @label
@@ -60,11 +62,15 @@ type GenTypeEqualities :: Symbol -> Type -> Type -> Type -> Type -> Constraint
 type family GenTypeEqualities label s t a b where
 
 type GenOptic :: Symbol -> Type -> Type -> Type -> Type -> Constraint
-class GenOptic label s t a b where
-  genOptic :: Optic (GetOpticKind s) '[] s t a b
+class GenOptic label s t a b
+    | s label -> a
+    , t label -> b
+    , s label b -> t
+    , t label a -> s where
+  genOptic :: Optic (GetOpticKind s) NoIx s t a b
 
 type GetOpticKind :: Type -> OpticKind
-type family GetOpticKind s
+type family GetOpticKind s where
 
 mkLens :: forall s t a b. (s -> a) -> (s -> b -> t) -> L.Lens s t a b
 mkLens = L.lens

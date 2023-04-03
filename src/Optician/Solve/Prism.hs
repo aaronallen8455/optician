@@ -82,12 +82,13 @@ mkGetterExpr
   -> Ghc.CoreExpr
 mkGetterExpr inp dataCon scrutBndr tTy aTy =
   let resultTy = Ghc.mkTyConApp (eitherTyCon inp) [tTy, aTy]
-      (tyVars, theta, _) = Ghc.tcSplitSigmaTy . Ghc.exprType . Ghc.Var
-                         $ Ghc.dataConWorkId dataCon
+--       (_, theta, _) = Ghc.tcSplitSigmaTy . Ghc.exprType . Ghc.Var
+--                          $ Ghc.dataConWorkId dataCon
       conCaseBndrs =
         Ghc.mkTemplateLocalsNum 1
           $ Ghc.scaledThing <$> Ghc.dataConRepArgTys dataCon
-      valBndrs = drop (length tyVars + length theta) conCaseBndrs
+      -- already asserted that there are no existentials or thetas
+      valBndrs = conCaseBndrs -- drop (length theta) conCaseBndrs
       leftTExpr =
         Ghc.mkCoreConApps (leftDataCon inp)
           [Ghc.Type tTy, Ghc.Type aTy, Ghc.Var scrutBndr]

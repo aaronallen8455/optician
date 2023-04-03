@@ -93,35 +93,3 @@ buildOptic inputs [ Ghc.LitTy (Ghc.StrTyLit labelArg)
   where
     mDataCons = Ghc.tyConDataCons_maybe sTyCon
 buildOptic _ _ = pure Nothing
-
--- Polymorphic updates will be tricky because need some way to know that all
--- occurrences of a given ty var will be changed by the operation. Need some
--- way to look through all the other fields and make sure that the ty var
--- doesn't occur anywhere in their types.
--- There could also be multiple ty vars impacted by a single optic, so will
--- need to tease out the individual vars and do this check for each of them.
--- Equality constraints will need to be emitted for the t, a, and b args based
--- on the actual types.
---
--- For products, take the type of the field and compare it to the a arg
--- (will need to emit equality for a and the instantiated field of s)
--- this should allow for determining which of the polymorphic variables occur
--- in the field's type and their position.
--- Then examine the b argument and see if it changes the type of any of the
--- variable positions. For those that do change, check that the variable does
--- not occur in other fields.
--- (emit equality for b and the field type of t)
---
---
--- A different perhaps easier way to go:
--- Compare the s and t types to see which ty args change, if any. For those that
--- change, check that they only occur in the focused field. emit constraints
--- tying a and b to the field in s and t respectively.
---
---
--- An even easier though seemingly less efficient way:
--- Emit equality constraints between all fields in s vs al fields in t except
--- for the focused field, emit equalit against the expected field types for
--- both of those. This seems like it would yield the best error messages.
---
--- Will probably need some sort of guard against existentially quantified ty vars.

@@ -8,7 +8,7 @@ module Optician
   ) where
 
 import qualified GHC.TcPlugin.API as P
-import           Optician.Types (GenOptic(..), GetOpticKind, optic, field, _Ctor)
+import           Optician.Types (GenOptic, GetOpticKind, optic, field, _Ctor)
 
 import qualified Optician.GhcFacade as Ghc
 import           Optician.Inputs (lookupInputs)

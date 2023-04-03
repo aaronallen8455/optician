@@ -19,6 +19,7 @@ common warnings
 library
     import:           warnings
     exposed-modules:  Optician,
+                      Optician.Label,
                       Optician.Types
     other-modules: Optician.GhcFacade,
                    Optician.Inputs,
@@ -52,6 +53,7 @@ test-suite optician-test
         base ^>=4.18.0.0,
         optician,
         optics-vl,
+        optics-core,
         lens-properties,
         QuickCheck,
         tasty,
