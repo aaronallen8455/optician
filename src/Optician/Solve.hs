@@ -32,29 +32,6 @@ isGenOptic inputs = \case
     -> Just (ct, cc_tyargs)
   _ ->  Nothing
 
--- seems possible in theory to support existentials using mkSingleAltCase and
--- dataConrepArgTys, but need to somehow pick the binder that corresponds to
--- the focused field. Skip over all the things that have kind Type or Constraint?
---
--- How it could work:
--- split the sigma ty of the datacon worker ID to get the free vars and predicates
--- separated out from the value args tys.
--- Build a map from the user ty args to the tycon ty args.
--- Use that map to instantiate the pred types. Is instantiation really necessary?
--- Check if there are any preds that are different between the s and t types.
--- Create wanted constraints for those preds if so.
--- Determine the index position of the focused field in the value arg types.
--- Check if the focused field has a naughty selector - fail out if so b/c its an existential.
--- To build the setter arg to 'lens', use mkSingleAltCase with the datacon and the
--- binder for the s arg. Use the arg types for the constructor worker 'dataConRepArgTys'
--- to make the binders for the case pattern (see mkDictSelRhs for an example).
--- Now use mkCoreConApps with the datacon giving it the universal ty args from
--- the t tyCon, the existential tys using the binders, binders for preds that
--- did not change, the evidence vars for preds that are still wanted (does this work?),
--- binders for field values other than the focused field, the b arg binder for the
--- focused field.
--- Should reject stupid thetas
-
 -- | Attemps to build an optic to satisfy a GenClass wanted
 buildOptic :: Inputs -> [P.Type] -> P.TcPluginM P.Solve (Maybe P.EvTerm)
 buildOptic inputs [ Ghc.LitTy (Ghc.StrTyLit labelArg)

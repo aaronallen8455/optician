@@ -6,7 +6,7 @@ module Main (main) where
 
 import           Control.Lens.Properties
 import           GHC.Generics
-import           Optics.Optic
+import           Optics
 import           Optics.VL
 import           Test.QuickCheck
 import           Test.Tasty
