@@ -10,3 +10,4 @@ import           Language.Haskell.Syntax.Basic as Ghc
 import           GHC.Types.Name.Occurrence as Ghc
 import           GHC.Tc.Utils.TcType as Ghc
 import           GHC.Builtin.Names as Ghc
+import           GHC.Tc.Types as Ghc hiding (DefaultingPlugin, TcPlugin)

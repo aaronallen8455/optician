@@ -44,6 +44,21 @@ exist = Exist (Right "test") 9
 repack :: Exist -> Exist
 repack Exist { exf = a, other = b } = Exist a $ b + 1
 
+otherLens :: Lens' Exist Int
+otherLens = lens other (\(Exist x o) b -> Exist x b)
+
+data Exist2 f x where
+  Exist2 :: forall y x f. (Show x, Show y) => { exf2 :: f x, other2 :: y } -> Exist2 f x
+
+exist2 :: Exist2 [] ()
+exist2 = Exist2 [()] "..."
+
+data Exist3 x where
+  Exist3 :: { exf3 :: String } -> Exist3 String
+
+exist3 :: Exist3 String
+exist3 = Exist3 ".."
+
 -- what about GADTs with constraint contexts?
 
 data Su
@@ -65,7 +80,9 @@ p3 = p2 % _1
 
 data Su2 a
   = Su21 (Maybe a)
-  | Su22 Int
+  | Su22 Int (Maybe (Su2 Double))
+  | Su23 Foo
+  deriving Show
 
 p4 :: Prism (Su2 ()) (Su2 Int) (Maybe ()) (Maybe Int)
 p4 = _Ctor @"Su21"
@@ -77,5 +94,6 @@ p5 = _Ctor @"Su21"
 -- p5 :: Prism (Su2 ()) (Su2 Int) Int Int
 -- p5 = _Ctor @"Su22"
 
-p6 :: Prism' (Su2 Double) Double
-p6 = #Su21 % #Just
+p6 :: AffineTraversal' (Su2 Double) Int
+p6 = #Su22 % _2 % #Just % #Su22 % _2 % #Just % #Su23 % #a
+

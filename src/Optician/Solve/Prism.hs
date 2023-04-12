@@ -62,6 +62,8 @@ mkInjectorExpr dataCon tTyArgs bBndr bTy
 
   | otherwise = Nothing
 
+-- | The 'b' type will either be a single type or a tuple of all the args to
+-- the data con.
 extractTupleTys :: Ghc.Type
                 -> Maybe (Ghc.DataCon, [Ghc.Type]) -- returns Nothing if type is not a tuple
 extractTupleTys = \case

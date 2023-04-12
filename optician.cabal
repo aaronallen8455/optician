@@ -23,20 +23,22 @@ library
                       Optician.Types
     other-modules: Optician.GhcFacade,
                    Optician.Inputs,
-                   Optician.Solve,
-                   Optician.Solve.Lens,
-                   Optician.Solve.Prism,
                    Optician.Rewrite,
                    Optician.Rewrite.GenTypeEqualities,
                    Optician.Rewrite.GenTypeEqualities.Lens,
                    Optician.Rewrite.GenTypeEqualities.Prism,
-                   Optician.Rewrite.GetOpticKind
+                   Optician.Rewrite.GetOpticKind,
+                   Optician.Solve,
+                   Optician.Solve.Lens,
+                   Optician.Solve.Prism,
+                   Optician.TypeErrors
     -- other-extensions:
     default-extensions: LambdaCase
     build-depends:    base >=4.17.0.0,
                       optics-core >= 0.4,
                       ghc-tcplugin-api >= 0.10,
-                      ghc >= 9.4
+                      ghc >= 9.4,
+                      transformers
     hs-source-dirs:   src
     default-language: GHC2021
 

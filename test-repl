@@ -1,4 +1,4 @@
 #!/bin/bash
 
 cabal build
-cabal exec ghci -- Test.hs -package optician -fplugin Optician -XDataKinds
+cabal exec ghci -- Test.hs -package optician -fplugin Optician -XDataKinds -XOverloadedLabels

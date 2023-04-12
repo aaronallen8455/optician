@@ -18,10 +18,13 @@ lensTyEqPairs
   -> P.Type
   -> [(P.Type, P.Type)]
 lensTyEqPairs fieldName dataCon sTyArgs tTyArgs aTy bTy = do
-  let sFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon sTyArgs
-      tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon tTyArgs
+  let existTys = Ghc.mkTyVarTy <$> Ghc.dataConExTyCoVars dataCon
+      sFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon (sTyArgs ++ existTys)
+      tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon (tTyArgs ++ existTys)
       fieldLabels = Ghc.flLabel <$> Ghc.dataConFieldLabels dataCon
+
   (sTy, tTy, label) <- zip3 sFieldTys tFieldTys fieldLabels
+
   if label == Ghc.FieldLabelString fieldName
      then [(sTy, aTy), (tTy, bTy)]
      else [(sTy, tTy)]

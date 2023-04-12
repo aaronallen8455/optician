@@ -47,13 +47,12 @@ genTypeEqualitiesRewriter inputs _givens
       }
   where
     mDataCons = Ghc.tyConDataCons_maybe sTyCon
-    mkReduction ty =
+    mkReduction =
       P.mkTyFamAppReduction
         "GenTypeEqualities"
         P.Nominal
         (genTypeEqualitiesTyCon inputs)
         tyArgs
-        ty
 genTypeEqualitiesRewriter _ _ _ = pure P.TcPluginNoRewrite
 
 mkConstraintFromPairs :: [(P.Type, P.Type)] -> P.Type
