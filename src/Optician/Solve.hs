@@ -79,14 +79,17 @@ buildOptic inputs ctLoc [ Ghc.LitTy (Ghc.StrTyLit labelArg)
   , all (null . Ghc.dataConExTyCoVars) dataCons -- no existentials allowed
   , all (null . Ghc.dataConTheta) dataCons -- no contexts
   , all (null . Ghc.dataConStupidTheta) dataCons
-  -- check type equalities
   , let matchFocusedCon = (== labelArg) . Ghc.occNameFS . Ghc.nameOccName . Ghc.getName
-  , ([dataCon], otherDataCons) <- List.partition matchFocusedCon dataCons
   , sTyCon == tTyCon -- fail so that the SameBase constraint will attempt to solve this equality
-  , all (uncurry Ghc.eqType)
-      $ prismTyEqPairs dataCon otherDataCons sTyArgs tTyArgs aArg bArg
-  = fmap (\x -> Right (x, [])) <$>
-      mkPrism inputs dataCon tTyArgs sArg tArg aArg bArg
+  = case List.partition matchFocusedCon dataCons of
+      ([dataCon], otherDataCons) ->
+        -- check type equalities
+        if all (uncurry Ghc.eqType)
+           $ prismTyEqPairs dataCon otherDataCons sTyArgs tTyArgs aArg bArg
+           then fmap (\x -> Right (x, [])) <$>
+                  mkPrism inputs dataCon tTyArgs sArg tArg aArg bArg
+           else pure Nothing
+      _ -> pure . Just . Left $ Err.TypeDoesNotHaveDataCon sArg labelArg
 
   where
     mDataCons = Ghc.tyConDataCons_maybe sTyCon

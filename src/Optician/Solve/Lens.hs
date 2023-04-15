@@ -37,6 +37,9 @@ mkLens inputs ctLoc dataCon fieldName sTyArgs tTyArgs sArg tArg aArg bArg = runE
   fields <- zipWith (\i (a, b, c) -> (a, (i, b, c))) [0 :: Int ..]
               <$> lift (saturatedSelectors dataCon)
 
+  when (null fields)
+    $ throwE (Err.DataConWithoutFields dataCon)
+
   (focusIndex, focusSel, selId) <-
     case lookup (Ghc.FieldLabelString fieldName) fields of
       Nothing -> throwE $ Err.MissingField sArg fieldName

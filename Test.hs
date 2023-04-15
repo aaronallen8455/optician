@@ -59,7 +59,10 @@ data Exist3 x where
 exist3 :: Exist3 String
 exist3 = Exist3 ".."
 
--- what about GADTs with constraint contexts?
+data Plain = Plain Int Bool
+
+plain :: Plain
+plain = Plain 12 True
 
 data Su
   = Su1 Int
@@ -96,4 +99,3 @@ p5 = _Ctor @"Su21"
 
 p6 :: AffineTraversal' (Su2 Double) Int
 p6 = #Su22 % _2 % #Just % #Su22 % _2 % #Just % #Su23 % #a
-
