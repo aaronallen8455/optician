@@ -99,3 +99,11 @@ p5 = _Ctor @"Su21"
 
 p6 :: AffineTraversal' (Su2 Double) Int
 p6 = #Su22 % _2 % #Just % #Su22 % _2 % #Just % #Su23 % #a
+
+data CtxSum a b where
+  CS1 :: (Show a, Eq b, Eq a) => a -> b -> CtxSum a b
+  CS2 :: Eq a => a -> CtxSum a b
+
+cs1, cs2 :: CtxSum Double String
+cs1 = CS1 9.1 "9.1"
+cs2 = CS2 20.9

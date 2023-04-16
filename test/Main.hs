@@ -50,13 +50,15 @@ testTree =
       [ testProperty "lens"
           $ existLensTest
         .&. existPLensTest
-        -- TODO prism
+      , testProperty "prism" existPrismTest
       ]
     , testGroup "contexts"
       [ testProperty "lens"
           $ ctxLensTest1
         .&. ctxLensTest2
-        -- TODO prism
+      , testProperty "prism"
+          $ ctxPrismTest1
+        .&. ctxPrismTest2
       ]
     ]
 
@@ -240,3 +242,57 @@ ctxLensTest2 =
     view (field @"cf2" @(Ctx Bool (Maybe Bool))) (set (field @"cf2") i ctx) === i
     .&. set (field @"cf2") (view (field @"cf2") ctx) ctx === ctx
     .&. set (field @"cf2") i (set (field @"cf2") i ctx) === set (field @"cf2") i ctx
+
+data ExSum where
+  ES1 :: a -> ExSum
+  ES2 :: Int -> ExSum
+
+instance Show ExSum where
+  show _ = "ExSum"
+
+instance Eq ExSum where
+  ES1 _ == ES1 _ = True
+  ES2 x == ES2 y = x == y
+  _ == _ = False
+
+es1, es2 :: ExSum
+es1 = ES1 "x"
+es2 = ES2 20
+
+existPrismTest :: Property
+existPrismTest =
+  forAll (oneof [pure es1, pure es2]) $ \es ->
+    forAll (arbitrary @Int) $ \v ->
+      preview (_Ctor @"ES2" @ExSum) (review (_Ctor @"ES2") v) === Just v
+      .&. maybe discard (\x -> review (_Ctor @"ES2") x === es) (preview (_Ctor @"ES2") es)
+
+data CtxSum a b where
+  CS1 :: (Show a, Eq b, Eq a) => a -> b -> CtxSum a b
+  CS2 :: Eq a => a -> CtxSum a b
+
+instance Show (CtxSum a b) where
+  show (CS1 a _) = show a
+  show _ = "CS2"
+
+instance Eq (CtxSum a b) where
+  CS1 a b == CS1 c d = (a, b) == (c, d)
+  CS2 a == CS2 b = a == b
+  _ == _ = False
+
+cs1, cs2 :: CtxSum Double String
+cs1 = CS1 9.1 "9.1"
+cs2 = CS2 20.9
+
+ctxPrismTest1 :: Property
+ctxPrismTest1 =
+  forAll (oneof [pure cs1, pure cs2]) $ \es ->
+    forAll (arbitrary @(Double, String)) $ \v ->
+      preview (_Ctor @"CS1" @(CtxSum Double String)) (review (_Ctor @"CS1") v) === Just v
+      .&. maybe discard (\x -> review (_Ctor @"CS1") x === es) (preview (_Ctor @"CS1") es)
+
+ctxPrismTest2 :: Property
+ctxPrismTest2 =
+  forAll (oneof [pure cs1, pure cs2]) $ \es ->
+    forAll (arbitrary @Double) $ \v ->
+      preview (_Ctor @"CS2" @(CtxSum Double String)) (review (_Ctor @"CS2") v) === Just v
+      .&. maybe discard (\x -> review (_Ctor @"CS2") x === es) (preview (_Ctor @"CS2") es)

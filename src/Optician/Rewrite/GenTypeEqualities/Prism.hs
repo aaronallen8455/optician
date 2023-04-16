@@ -18,13 +18,15 @@ prismTyEqPairs dataCon otherDataCons sTyArgs tTyArgs aArg bArg =
   -- focused one (any ty vars that differ must only occur in the focused data con)
   let otherConEqs = do
         dc <- otherDataCons
-        let sTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dc sTyArgs
-            tTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dc tTyArgs
+        let exTys = Ghc.mkTyVarTy <$> Ghc.dataConExTyCoVars dc
+            sTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dc (sTyArgs ++ exTys)
+            tTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dc (tTyArgs ++ exTys)
         zip sTys tTys
 
-      sFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon sTyArgs
+      existTys = Ghc.mkTyVarTy <$> Ghc.dataConExTyCoVars dataCon
+      sFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon (sTyArgs ++ existTys)
       sTupleTy = Ghc.mkBoxedTupleTy sFieldTys
-      tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon tTyArgs
+      tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon (tTyArgs ++ existTys)
       tTupleTy = Ghc.mkBoxedTupleTy tFieldTys
 
    in (aArg, sTupleTy)

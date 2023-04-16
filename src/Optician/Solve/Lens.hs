@@ -30,6 +30,9 @@ mkLens
   -> P.Type -- b arg
   -> P.TcPluginM P.Solve (Either Err.OpticErr (P.CoreExpr, [Ghc.Ct])) -- Cts are new wanteds based on theta context of data con
 mkLens inputs ctLoc dataCon fieldName sTyArgs tTyArgs sArg tArg aArg bArg = runExceptT $ do
+  unless (null $ Ghc.dataConStupidTheta dataCon)
+    $ throwE Err.StupidTheta
+
   gre <- lift $ Ghc.tcg_rdr_env . fst <$> P.getEnvs
   when (isNothing . Ghc.lookupGRE_Name gre $ Ghc.getName dataCon)
     $ throwE (Err.DataConNotInScope dataCon)
@@ -54,7 +57,7 @@ mkLens inputs ctLoc dataCon fieldName sTyArgs tTyArgs sArg tArg aArg bArg = runE
   bName <- lift . PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "b")
   let bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy bArg
       (_, theta, _) = Ghc.tcSplitSigmaTy . Ghc.idType
-                           $ Ghc.dataConWorkId dataCon
+                    $ Ghc.dataConWorkId dataCon
 
   -- Need to instantiate the types of theta and check equality between s and t.
   -- Only emit wanteds for those that differ, otherwise pass the dict through.
