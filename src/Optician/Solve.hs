@@ -4,7 +4,6 @@ module Optician.Solve
   ( solve
   ) where
 
-import           Data.Either
 import qualified Data.List as List
 import           Data.Maybe
 import           Data.Traversable
@@ -21,24 +20,23 @@ import qualified Optician.TypeErrors as Err
 solve :: Inputs -> P.TcPluginSolver
 solve inputs _givens wanteds = do
   let wantedGenOptics = mapMaybe (isGenOptic inputs) wanteds
-  -- Left is for new wanteds
-  -- Right is for solved constraints
-  eithers <- for wantedGenOptics $ \(ct, args) -> do
+  tuples <- fmap catMaybes . for wantedGenOptics $ \(ct, args) -> do
     meResult <- buildOptic inputs (Ghc.ctLoc ct) args
     case meResult of
-      Nothing -> pure []
+      Nothing -> pure Nothing
       Just (Left err) -> do
         newWanted <- Err.opticErrorToCt (Ghc.ctLoc ct) err
-        pure [ Left [newWanted]
-             , Right (P.EvExpr . Ghc.Var $ Ghc.ctEvId newWanted, ct)
-             ]
+        pure $ Just
+             ( (P.EvExpr . Ghc.Var $ Ghc.ctEvId newWanted, ct)
+             , [newWanted]
+             )
       Just (Right (expr, newWanteds)) ->
-        pure [ Right (P.EvExpr expr, ct)
-             , Left newWanteds
-             ]
+        pure $ Just
+             ( (P.EvExpr expr, ct)
+             , newWanteds
+             )
 
-  let (newWanteds, solved) = partitionEithers $ concat eithers
-
+  let (solved, newWanteds) = unzip tuples
   pure $ P.TcPluginOk solved (concat newWanteds)
 
 -- | Identify wanteds for the GenOptic class

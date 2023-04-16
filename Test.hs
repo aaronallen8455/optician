@@ -107,3 +107,6 @@ data CtxSum a b where
 cs1, cs2 :: CtxSum Double String
 cs1 = CS1 9.1 "9.1"
 cs2 = CS2 20.9
+
+csp :: (Show a, Eq d, Eq a) => Prism (CtxSum a b) (CtxSum a d) (a, b) (a, d)
+csp = #CS1
