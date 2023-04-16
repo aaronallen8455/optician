@@ -22,7 +22,7 @@ opticErrorToCt ctLoc err
   = fmap Ghc.mkNonCanonical . P.newWanted ctLoc <=< P.mkTcPluginErrorTy
   $ case err of
       MissingField ty fieldName ->
-        P.PrintType ty P.:|: P.Txt " does not have field "
+        P.Txt "'" P.:|: P.PrintType ty P.:|: P.Txt "' does not have field "
           P.:|: P.PrintType (Ghc.mkStrLitTy fieldName)
       DataConNotInScope dataCon ->
         P.Txt "Data constructor not in scope: "

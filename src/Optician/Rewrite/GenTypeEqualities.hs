@@ -24,7 +24,7 @@ genTypeEqualitiesRewriter inputs _givens
     { P.tcPluginReduction
         = mkReduction
         . mkConstraintFromPairs
-        $ lensTyEqPairs labelArg dataCon sTyArgs tTyArgs aArg bArg
+        $ lensTyEqPairs labelArg sTyCon dataCon sTyArgs tTyArgs aArg bArg
     , P.tcRewriterNewWanteds = []
     }
 
@@ -36,7 +36,7 @@ genTypeEqualitiesRewriter inputs _givens
       { P.tcPluginReduction
           = mkReduction
           . mkConstraintFromPairs
-          $ prismTyEqPairs dataCon otherDataCons sTyArgs tTyArgs aArg bArg
+          $ prismTyEqPairs sTyCon dataCon otherDataCons sTyArgs tTyArgs aArg bArg
       , P.tcRewriterNewWanteds = []
       }
 

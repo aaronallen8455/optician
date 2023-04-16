@@ -66,7 +66,7 @@ buildOptic inputs ctLoc [ Ghc.LitTy (Ghc.StrTyLit labelArg)
   , sTyCon == tTyCon -- fail so that the SameBase constraint will attempt to solve this equality
   -- check type equalities
   , all (uncurry Ghc.eqType)
-      $ lensTyEqPairs labelArg dataCon sTyArgs tTyArgs aArg bArg
+      $ lensTyEqPairs labelArg sTyCon dataCon sTyArgs tTyArgs aArg bArg
   = Just <$> mkLens inputs ctLoc dataCon labelArg sTyArgs tTyArgs sArg tArg aArg bArg
 
   -- sum type
@@ -77,7 +77,7 @@ buildOptic inputs ctLoc [ Ghc.LitTy (Ghc.StrTyLit labelArg)
       ([dataCon], otherDataCons) ->
         -- check type equalities
         if all (uncurry Ghc.eqType)
-           $ prismTyEqPairs dataCon otherDataCons sTyArgs tTyArgs aArg bArg
+           $ prismTyEqPairs sTyCon dataCon otherDataCons sTyArgs tTyArgs aArg bArg
            then Just <$> mkPrism inputs ctLoc dataCon tTyArgs sArg tArg aArg bArg
            else pure Nothing
       _ -> pure . Just . Left $ Err.TypeDoesNotHaveDataCon sArg labelArg

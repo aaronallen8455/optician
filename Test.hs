@@ -2,6 +2,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -fplugin Optician #-}
 
+import           Data.Kind
+
 import           Optician
 import           Optician.Label
 import           Optics.Optic
@@ -110,3 +112,8 @@ cs2 = CS2 20.9
 
 csp :: (Show a, Eq d, Eq a) => Prism (CtxSum a b) (CtxSum a d) (a, b) (a, d)
 csp = #CS1
+
+data Phan a (b :: Type) = Phan { p1 :: a }
+
+plen :: Lens (Phan a b) (Phan c b) a c
+plen = #p1

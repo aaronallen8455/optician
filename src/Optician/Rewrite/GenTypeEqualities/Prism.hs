@@ -6,14 +6,15 @@ import qualified Optician.GhcFacade as Ghc
 
 -- | Get the pairs of types that should be equal in order to construct a prism
 prismTyEqPairs
-  :: Ghc.DataCon -- focused
+  :: Ghc.TyCon
+  -> Ghc.DataCon -- focused
   -> [Ghc.DataCon] -- non-focused
   -> [Ghc.Type] -- s ty args
   -> [Ghc.Type] -- t ty args
   -> Ghc.Type -- a
   -> Ghc.Type -- b
   -> [(Ghc.Type, Ghc.Type)]
-prismTyEqPairs dataCon otherDataCons sTyArgs tTyArgs aArg bArg =
+prismTyEqPairs tyCon dataCon otherDataCons sTyArgs tTyArgs aArg bArg =
   -- Ensure that it is safe to use 's' as 't' for any constructor besides the
   -- focused one (any ty vars that differ must only occur in the focused data con)
   let otherConEqs = do
@@ -28,7 +29,12 @@ prismTyEqPairs dataCon otherDataCons sTyArgs tTyArgs aArg bArg =
       sTupleTy = Ghc.mkBoxedTupleTy sFieldTys
       tFieldTys = Ghc.scaledThing <$> Ghc.dataConInstOrigArgTys dataCon (tTyArgs ++ existTys)
       tTupleTy = Ghc.mkBoxedTupleTy tFieldTys
+      roles = Ghc.tyConRoles tyCon
+      phantomTyEqs = do
+        (sTyArg, tTyArg, Ghc.Phantom) <- zip3 sTyArgs tTyArgs roles
+        [(sTyArg, tTyArg)]
 
    in (aArg, sTupleTy)
     : (bArg, tTupleTy)
     : otherConEqs
+    ++ phantomTyEqs
