@@ -39,5 +39,5 @@ isSum :: P.Type -> Bool
 isSum = \case
   Ghc.TyConApp tyCon _
     | Just dataCons <- Ghc.tyConDataCons_maybe tyCon
-    -> length dataCons > 1
+    -> not (null dataCons)
   _ -> False

@@ -60,3 +60,22 @@ test-suite optician-test
         QuickCheck,
         tasty,
         tasty-quickcheck
+
+test-suite optician-type-error-test
+    import:           warnings
+    default-language: GHC2021
+    -- other-modules:
+    -- other-extensions:
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   type-error-test
+    main-is:          Main.hs
+    ghc-options: -fplugin Optician
+                 -fdefer-type-errors
+    build-depends:
+        base ^>=4.18.0.0,
+        optician,
+        optics,
+        tasty,
+        HUnit,
+        tasty-hunit,
+        text
