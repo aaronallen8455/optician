@@ -17,7 +17,7 @@ import           Optician.Types (GenOptic, GetOpticKind, optic, SameBase, GenTyp
 -- orphan
 instance ( GenOptic label s t a b
          , is ~ NoIx
-         , k ~ GetOpticKind s
+         , k ~ GetOpticKind label s
          , SameBase s t
          , GenTypeEqualities label s t a b
          )

@@ -2,13 +2,13 @@ module Optician.Rewrite.GenTypeEqualities
   ( genTypeEqualitiesRewriter
   ) where
 
-import qualified Data.List as List
 import qualified GHC.TcPlugin.API as P
 
 import qualified Optician.GhcFacade as Ghc
 import           Optician.Inputs
 import           Optician.Rewrite.GenTypeEqualities.Lens (lensTyEqPairs)
 import           Optician.Rewrite.GenTypeEqualities.Prism (prismTyEqPairs)
+import           Optician.Rewrite.GetOpticKind (lensDataCon, prismDataCons)
 
 genTypeEqualitiesRewriter :: Inputs -> P.TcPluginRewriter
 genTypeEqualitiesRewriter inputs _givens
@@ -19,7 +19,7 @@ genTypeEqualitiesRewriter inputs _givens
                , bArg
                ]
   -- product type
-  | Just [dataCon] <- mDataCons
+  | Just dataCon <- lensDataCon sTyCon labelArg
   = pure P.TcPluginRewriteTo
     { P.tcPluginReduction
         = mkReduction
@@ -29,9 +29,7 @@ genTypeEqualitiesRewriter inputs _givens
     }
 
   -- sum type
-  | Just dataCons <- mDataCons
-  , let matchFocusedCon = (== labelArg) . Ghc.occNameFS . Ghc.nameOccName . Ghc.getName
-  , ([dataCon], otherDataCons) <- List.partition matchFocusedCon dataCons
+  | Just (dataCon, otherDataCons) <- prismDataCons sTyCon labelArg
   = pure P.TcPluginRewriteTo
       { P.tcPluginReduction
           = mkReduction
@@ -46,7 +44,6 @@ genTypeEqualitiesRewriter inputs _givens
       , P.tcRewriterNewWanteds = []
       }
   where
-    mDataCons = Ghc.tyConDataCons_maybe sTyCon
     mkReduction =
       P.mkTyFamAppReduction
         "GenTypeEqualities"

@@ -31,13 +31,13 @@ optic :: forall (label :: Symbol) s t a b
          , GenOptic label s t a b
          , GenTypeEqualities label s t a b
          )
-      => Optic (GetOpticKind s) NoIx s t a b
+      => Optic (GetOpticKind label s) NoIx s t a b
 optic = genOptic @label
 
 field :: forall label s t a b
        . ( SameBase s t
          , GenOptic label s t a b
-         , GetOpticKind s ~ L.A_Lens
+         , GetOpticKind label s ~ L.A_Lens
          , GenTypeEqualities label s t a b
          )
       => L.Lens s t a b
@@ -47,7 +47,7 @@ _Ctor :: forall label s t a b
        . ( SameBase s t
          , GenTypeEqualities label s t a b
          , GenOptic label s t a b
-         , GetOpticKind s ~ P.A_Prism
+         , GetOpticKind label s ~ P.A_Prism
          )
       => P.Prism s t a b
 _Ctor = optic @label
@@ -67,10 +67,10 @@ class GenOptic label s t a b
     , t label -> b
     , s label b -> t
     , t label a -> s where
-  genOptic :: Optic (GetOpticKind s) NoIx s t a b
+  genOptic :: Optic (GetOpticKind label s) NoIx s t a b
 
-type GetOpticKind :: Type -> OpticKind
-type family GetOpticKind s where
+type GetOpticKind :: Symbol -> Type -> OpticKind
+type family GetOpticKind label s where
 
 mkLens :: forall s t a b. (s -> a) -> (s -> b -> t) -> L.Lens s t a b
 mkLens = L.lens

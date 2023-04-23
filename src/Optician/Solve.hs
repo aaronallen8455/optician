@@ -4,7 +4,6 @@ module Optician.Solve
   ( solve
   ) where
 
-import qualified Data.List as List
 import           Data.Maybe
 import           Data.Traversable
 import qualified GHC.TcPlugin.API as P
@@ -13,6 +12,7 @@ import qualified Optician.GhcFacade as Ghc
 import           Optician.Inputs (Inputs(..))
 import           Optician.Rewrite.GenTypeEqualities.Lens (lensTyEqPairs)
 import           Optician.Rewrite.GenTypeEqualities.Prism (prismTyEqPairs)
+import           Optician.Rewrite.GetOpticKind (isLensLabel, lensDataCon, prismDataCons)
 import           Optician.Solve.Lens (mkLens)
 import           Optician.Solve.Prism (mkPrism)
 import qualified Optician.TypeErrors as Err
@@ -62,7 +62,7 @@ buildOptic inputs ctLoc [ Ghc.LitTy (Ghc.StrTyLit labelArg)
                         , bArg
                         ]
   -- product type
-  | Just [dataCon] <- mDataCons
+  | Just dataCon <- lensDataCon sTyCon labelArg
   , sTyCon == tTyCon -- fail so that the SameBase constraint will attempt to solve this equality
   -- check type equalities
   , all (uncurry Ghc.eqType)
@@ -70,11 +70,10 @@ buildOptic inputs ctLoc [ Ghc.LitTy (Ghc.StrTyLit labelArg)
   = Just <$> mkLens inputs ctLoc dataCon labelArg sTyArgs tTyArgs sArg tArg aArg bArg
 
   -- sum type
-  | Just dataCons <- mDataCons
-  , let matchFocusedCon = (== labelArg) . Ghc.occNameFS . Ghc.nameOccName . Ghc.getName
+  | not (isLensLabel labelArg)
   , sTyCon == tTyCon -- fail so that the SameBase constraint will attempt to solve this equality
-  = case List.partition matchFocusedCon dataCons of
-      ([dataCon], otherDataCons) ->
+  = case prismDataCons sTyCon labelArg of
+      Just (dataCon, otherDataCons) ->
         -- check type equalities
         if all (uncurry Ghc.eqType)
            $ prismTyEqPairs sTyCon dataCon otherDataCons sTyArgs tTyArgs aArg bArg
@@ -82,6 +81,4 @@ buildOptic inputs ctLoc [ Ghc.LitTy (Ghc.StrTyLit labelArg)
            else pure Nothing
       _ -> pure . Just . Left $ Err.TypeDoesNotHaveDataCon sArg labelArg
 
-  where
-    mDataCons = Ghc.tyConDataCons_maybe sTyCon
 buildOptic _ _ _ = pure Nothing
