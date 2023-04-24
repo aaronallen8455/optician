@@ -22,18 +22,19 @@ testTree =
     , testCase "type does not have data con" typeDoesntHaveDataCon
     , testCase "prism data con has existentials" dataConHasExistentials
     , testCase "data con with stupid theta" dataConWithStupidTheta
---     , testGroup "constraint context"
---       [ testCase "lens"
---       , testCase "prism"
---       ]
---     , testGroup "cannot change phantom type"
---       [ testCase "lens"
---       , testCase "prism"
---       ]
+    , testGroup "constraint context"
+      [ testCase "lens" contextLens
+      , testCase "prism" contextPrism
+      ]
+    , testGroup "cannot change phantom type"
+      [ testCase "lens" phantomLens
+      , testCase "prism" phantomPrism
+      ]
     , testGroup "polymorphic optics"
       [ testCase "lens cannot change ty var of unfocused field"
           $ unfocusedPolyFieldLens1
          >> unfocusedPolyFieldLens2
+      , testCase "prism cannot change ty var used in unfocused con" unfocusedTyVarPrism
       ]
     ]
 
@@ -116,18 +117,58 @@ unfocusedPolyFieldLens2 =
 
 data Phan a = Phan { p1 :: Int, p2 :: Bool }
 
+phan :: Lens (Phan Int) (Phan String) Int Int
+phan = field @"p1"
+
+phantomLens :: Assertion
+phantomLens =
+  checkTypeError "Couldn't match type ‘Int’ with ‘[Char]’"
+    $ Phan 1 True & phan .~ 9
+
+data PhanSum a = PS1 Bool | PS2 Int
+
+phanP :: Prism (PhanSum Int) (PhanSum String) Bool Bool
+phanP = _Ctor @"PS1"
+
+phantomPrism :: Assertion
+phantomPrism =
+  checkTypeError "Couldn't match type ‘Int’ with ‘[Char]’"
+    $ PS1 True & phanP .~ False
+
 data Ctx1 a where
   Ctx1 :: Show a => { c11 :: a } -> Ctx1 a
 
+contextLens :: Assertion
+contextLens =
+  checkTypeError "No instance for ‘Show (Ctx1 ())’ arising from a use of ‘field’" $
+    case Ctx1 () & field @"c11" .~ Ctx1 () of
+      Ctx1 a -> show a
+
 data Ctx2 a where
   Ctx21 :: Ord a => a -> Ctx2 a
-  Ctx22 :: a -> Ctx2 Bool
+  Ctx22 :: Ctx2 Bool
+
+contextPrism :: Assertion
+contextPrism =
+  checkTypeError "No instance for ‘Ord (Ctx2 ())’ arising from a use of ‘_Ctor’" $
+    case Ctx21 () & _Ctor @"Ctx21" .~ Ctx21 () of
+      Ctx21 a -> a > a
+
+data PolySum1 a = PoS1 a | PoS2 a
+
+polyPrism :: Prism (PolySum1 Bool) (PolySum1 ()) Bool ()
+polyPrism = _Ctor @"PoS1"
+
+unfocusedTyVarPrism :: Assertion
+unfocusedTyVarPrism =
+  checkTypeError "Couldn't match type ‘Bool’ with ‘()’"
+    $ PoS1 True & polyPrism .~ ()
 
 checkTypeError :: T.Text -> a -> Assertion
 checkTypeError subString v = do
   e <- try @SomeException $ evaluate v
   case e of
     Left (T.breakOn "In the expression" . T.pack . show -> (err, _)) -> do
-      assertBool "check type error" $
+      assertBool ("check type error: " ++ T.unpack err) $
         subString `T.isInfixOf` err
     Right _ -> assertFailure "No type error"

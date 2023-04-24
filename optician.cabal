@@ -71,6 +71,8 @@ test-suite optician-type-error-test
     main-is:          Main.hs
     ghc-options: -fplugin Optician
                  -fdefer-type-errors
+                 -Wno-deferred-type-errors
+                 -Wno-deprecated-flags
     build-depends:
         base ^>=4.18.0.0,
         optician,
