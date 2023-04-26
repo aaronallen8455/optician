@@ -42,7 +42,7 @@ genTypeEqualitiesRewriter inputs _givens
 
   | otherwise
   = pure P.TcPluginRewriteTo
-      { P.tcPluginReduction = mkReduction $ Ghc.mkConstraintTupleTy [] -- empty constraint
+      { P.tcPluginReduction = mkReduction $ Ghc.mkConstraintTupleTy' [] -- empty constraint
       , P.tcRewriterNewWanteds = []
       }
   where
@@ -56,5 +56,5 @@ genTypeEqualitiesRewriter _ _ _ = pure P.TcPluginNoRewrite
 
 mkConstraintFromPairs :: [(P.Type, P.Type)] -> P.Type
 mkConstraintFromPairs pairs =
-  Ghc.mkConstraintTupleTy
+  Ghc.mkConstraintTupleTy'
     $ uncurry Ghc.mkPrimEqPred <$> pairs

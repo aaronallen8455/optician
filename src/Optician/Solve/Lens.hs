@@ -44,7 +44,7 @@ mkLens inputs ctLoc dataCon fieldName sTyArgs tTyArgs sArg tArg aArg bArg = runE
     $ throwE (Err.DataConWithoutFields dataCon)
 
   (focusIndex, focusSel, selId) <-
-    case lookup (Ghc.FieldLabelString fieldName) fields of
+    case lookup (Ghc.FieldLabelString' fieldName) fields of
       Nothing -> throwE $ Err.MissingField sArg fieldName
       Just x -> pure x
 
@@ -52,10 +52,10 @@ mkLens inputs ctLoc dataCon fieldName sTyArgs tTyArgs sArg tArg aArg bArg = runE
     throwE Err.SelectorHasExistential
 
   sName <- lift . PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "s")
-  let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy sArg
+  let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy' sArg
 
   bName <- lift . PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "b")
-  let bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy bArg
+  let bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy' bArg
       (_, theta, _) = Ghc.tcSplitSigmaTy . Ghc.idType
                     $ Ghc.dataConWorkId dataCon
 

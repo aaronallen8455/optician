@@ -31,6 +31,6 @@ lensTyEqPairs fieldName tyCon dataCon sTyArgs tTyArgs aTy bTy = do
   phantomTyEqs ++ do
     (sTy, tTy, label) <- zip3 sFieldTys tFieldTys fieldLabels
 
-    if label == Ghc.FieldLabelString fieldName
+    if label == Ghc.FieldLabelString' fieldName
        then [(sTy, aTy), (tTy, bTy)]
        else [(sTy, tTy)]

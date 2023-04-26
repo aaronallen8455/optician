@@ -5,7 +5,7 @@ module Optician.Rewrite.GetOpticKind
   , prismDataCons
   ) where
 
-import           Data.Char (isLowerCase)
+import           Data.Char (isLower)
 import qualified Data.List as List
 import           Data.Maybe (isJust)
 import qualified GHC.TcPlugin.API as P
@@ -39,7 +39,7 @@ getOpticKindRewriter _ _ _ = pure P.TcPluginNoRewrite
 
 -- NB: this ignores the possibility of operator fields, oh well.
 isLensLabel :: Ghc.FastString -> Bool
-isLensLabel = all (\c -> isLowerCase c || c == '_') . take 1 . Ghc.unpackFS
+isLensLabel = all (\c -> isLower c || c == '_') . take 1 . Ghc.unpackFS
 
 lensDataCon :: Ghc.TyCon -> Maybe Ghc.DataCon
 lensDataCon tyCon = do

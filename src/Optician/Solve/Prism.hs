@@ -28,8 +28,8 @@ mkPrism
 mkPrism inp ctLoc dataCon tTyArgs sArg tArg aArg bArg = runExceptT $ do
   sName <- lift . PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "s")
   bName <- lift . PI.unsafeLiftTcM $ P.newName (Ghc.mkOccName Ghc.varName "b")
-  let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy sArg
-      bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy bArg
+  let sBinder = Ghc.mkLocalIdOrCoVar sName Ghc.ManyTy' sArg
+      bBinder = Ghc.mkLocalIdOrCoVar bName Ghc.ManyTy' bArg
       getterExpr = mkGetterExpr inp dataCon sBinder tArg aArg
   (injectorExpr, wanteds) <- mkInjectorExpr ctLoc dataCon tTyArgs bBinder bArg
   pure ( Ghc.mkCoreApps (Ghc.Var $ mkPrismId inp)

@@ -52,7 +52,7 @@ test-suite optician-test
     main-is:          Main.hs
     ghc-options: -fplugin Optician
     build-depends:
-        base ^>=4.18.0.0,
+        base >=4.17.0.0,
         optician,
         optics-vl,
         optics >= 0.4.2,
@@ -74,10 +74,11 @@ test-suite optician-type-error-test
                  -Wno-deferred-type-errors
                  -Wno-deprecated-flags
     build-depends:
-        base ^>=4.18.0.0,
+        base >=4.17.0.0,
         optician,
         optics,
         tasty,
         HUnit,
         tasty-hunit,
-        text
+        text,
+        ghc

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds, OverloadedStrings, GADTs, ViewPatterns #-}
 {-# LANGUAGE DatatypeContexts #-}
 
@@ -140,7 +141,11 @@ data Ctx1 a where
 
 contextLens :: Assertion
 contextLens =
+#if MIN_VERSION_ghc(9,6,0)
   checkTypeError "No instance for ‘Show (Ctx1 ())’ arising from a use of ‘field’" $
+#elif MIN_VERSION_ghc(9,4,0)
+  checkTypeError "No instance for (Show (Ctx1 ())) arising from a use of ‘field’" $
+#endif
     case Ctx1 () & field @"c11" .~ Ctx1 () of
       Ctx1 a -> show a
 
@@ -150,7 +155,11 @@ data Ctx2 a where
 
 contextPrism :: Assertion
 contextPrism =
+#if MIN_VERSION_ghc(9,6,0)
   checkTypeError "No instance for ‘Ord (Ctx2 ())’ arising from a use of ‘_Ctor’" $
+#elif MIN_VERSION_ghc(9,4,0)
+  checkTypeError "No instance for (Ord (Ctx2 ())) arising from a use of ‘_Ctor’" $
+#endif
     case Ctx21 () & _Ctor @"Ctx21" .~ Ctx21 () of
       Ctx21 a -> a > a
 
