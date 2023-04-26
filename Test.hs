@@ -11,6 +11,8 @@ import           Optics.Lens
 import           Optics.Operators
 import           Optics.Prism
 import           Optics.AffineTraversal
+import           Optics.Setter
+import           Optics.AffineFold
 import           Data.Tuple.Optics
 
 f :: Foo
@@ -117,3 +119,25 @@ data Phan a (b :: Type) = Phan { p1 :: a }
 
 plen :: Lens (Phan a b) (Phan c b) a c
 plen = #p1
+
+
+data Foo' = Foo' { foo :: Bar' }
+data Bar' = Bar' { bar' :: Maybe Bool }
+
+fooBar :: AffineTraversal' Foo' Bool
+fooBar = #foo % #bar' % #Just
+
+data Person = MkPerson
+  { name :: String
+  , age :: Int
+  }
+
+incrementAge :: Person -> Person
+incrementAge = over (field @"age") (+1)
+
+data Pet
+  = Dog String
+  | Cat String
+
+getDogName :: Pet -> Maybe String
+getDogName = preview (_Ctor @"Dog")

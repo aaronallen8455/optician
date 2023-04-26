@@ -24,8 +24,8 @@ data Inputs = MkInputs
 
 lookupInputs :: P.TcPluginM P.Init Inputs
 lookupInputs = do
-  typesResult <- P.findImportedModule (P.mkModuleName "Optician.Types")
-                   =<< P.resolveImport (P.mkModuleName "Optician.Types") Nothing
+  typesResult <- P.findImportedModule (P.mkModuleName "Optician.Internal")
+                   =<< P.resolveImport (P.mkModuleName "Optician.Internal") Nothing
   case typesResult of
     P.Found _ typesMod -> do
       getOpticKindName <- P.lookupOrig typesMod (P.mkTcOcc "GetOpticKind")
@@ -45,4 +45,4 @@ lookupInputs = do
       case (,) <$> mALensType <*> mAPrismType of
         Nothing -> P.panic "Could not get optic types"
         Just (aLensType, aPrismType) -> pure MkInputs{..}
-    _ -> P.panic "Could not find 'Optician.Types'"
+    _ -> P.panic "Could not find 'Optician.Internal"

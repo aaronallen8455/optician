@@ -20,7 +20,7 @@ library
     import:           warnings
     exposed-modules:  Optician,
                       Optician.Label,
-                      Optician.Types
+                      Optician.Internal
     other-modules: Optician.GhcFacade,
                    Optician.Inputs,
                    Optician.Rewrite,

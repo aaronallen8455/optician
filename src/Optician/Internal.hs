@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
-module Optician.Types
+module Optician.Internal
   ( GenOptic
   , optic
   , field
@@ -34,6 +34,9 @@ optic :: forall (label :: Symbol) s t a b
       => Optic (GetOpticKind label s) NoIx s t a b
 optic = genOptic @label
 
+-- | Lens for a field in a record.
+--
+-- @since 0.1.0.0
 field :: forall label s t a b
        . ( SameBase s t
          , GenOptic label s t a b
@@ -43,6 +46,9 @@ field :: forall label s t a b
       => L.Lens s t a b
 field = optic @label
 
+-- | Prism for a sum type.
+--
+-- @since 0.1.0.0
 _Ctor :: forall label s t a b
        . ( SameBase s t
          , GenTypeEqualities label s t a b

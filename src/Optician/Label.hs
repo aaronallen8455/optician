@@ -12,7 +12,7 @@ module Optician.Label
 import           GHC.OverloadedLabels
 import           Optics.Optic
 
-import           Optician.Types (GenOptic, GetOpticKind, optic, SameBase, GenTypeEqualities)
+import           Optician.Internal (GenOptic, GetOpticKind, optic, SameBase, GenTypeEqualities)
 
 -- orphan
 instance ( GenOptic label s t a b
