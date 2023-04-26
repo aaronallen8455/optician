@@ -62,7 +62,8 @@ buildOptic inputs ctLoc [ Ghc.LitTy (Ghc.StrTyLit labelArg)
                         , bArg
                         ]
   -- product type
-  | Just dataCon <- lensDataCon sTyCon labelArg
+  | isLensLabel labelArg
+  , Just dataCon <- lensDataCon sTyCon
   , sTyCon == tTyCon -- fail so that the SameBase constraint will attempt to solve this equality
   -- check type equalities
   , all (uncurry Ghc.eqType)

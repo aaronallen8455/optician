@@ -8,7 +8,7 @@ import qualified Optician.GhcFacade as Ghc
 import           Optician.Inputs
 import           Optician.Rewrite.GenTypeEqualities.Lens (lensTyEqPairs)
 import           Optician.Rewrite.GenTypeEqualities.Prism (prismTyEqPairs)
-import           Optician.Rewrite.GetOpticKind (lensDataCon, prismDataCons)
+import           Optician.Rewrite.GetOpticKind (isLensLabel, lensDataCon, prismDataCons)
 
 genTypeEqualitiesRewriter :: Inputs -> P.TcPluginRewriter
 genTypeEqualitiesRewriter inputs _givens
@@ -19,7 +19,8 @@ genTypeEqualitiesRewriter inputs _givens
                , bArg
                ]
   -- product type
-  | Just dataCon <- lensDataCon sTyCon labelArg
+  | isLensLabel labelArg
+  , Just dataCon <- lensDataCon sTyCon
   = pure P.TcPluginRewriteTo
     { P.tcPluginReduction
         = mkReduction
@@ -29,7 +30,8 @@ genTypeEqualitiesRewriter inputs _givens
     }
 
   -- sum type
-  | Just (dataCon, otherDataCons) <- prismDataCons sTyCon labelArg
+  | not (isLensLabel labelArg)
+  , Just (dataCon, otherDataCons) <- prismDataCons sTyCon labelArg
   = pure P.TcPluginRewriteTo
       { P.tcPluginReduction
           = mkReduction

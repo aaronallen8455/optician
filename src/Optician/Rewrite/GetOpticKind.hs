@@ -5,7 +5,6 @@ module Optician.Rewrite.GetOpticKind
   , prismDataCons
   ) where
 
-import           Control.Monad (guard)
 import           Data.Char (isLowerCase)
 import qualified Data.List as List
 import           Data.Maybe (isJust)
@@ -42,15 +41,13 @@ getOpticKindRewriter _ _ _ = pure P.TcPluginNoRewrite
 isLensLabel :: Ghc.FastString -> Bool
 isLensLabel = all (\c -> isLowerCase c || c == '_') . take 1 . Ghc.unpackFS
 
-lensDataCon :: Ghc.TyCon -> Ghc.FastString -> Maybe Ghc.DataCon
-lensDataCon tyCon label = do
-  guard $ isLensLabel label
+lensDataCon :: Ghc.TyCon -> Maybe Ghc.DataCon
+lensDataCon tyCon = do
   [dataCon] <- Ghc.tyConDataCons_maybe tyCon
   Just dataCon
 
 prismDataCons :: Ghc.TyCon -> Ghc.FastString -> Maybe (Ghc.DataCon, [Ghc.DataCon])
 prismDataCons tyCon label = do
-  guard . not $ isLensLabel label
   dataCons <- Ghc.tyConDataCons_maybe tyCon
   let matchFocusedCon = (== label) . Ghc.occNameFS . Ghc.nameOccName . Ghc.getName
   ([dataCon], otherDataCons)
