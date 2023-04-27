@@ -6,14 +6,10 @@ import           Data.Kind
 
 import           Optician
 import           Optician.Label
-import           Optics.Optic
-import           Optics.Lens
-import           Optics.Operators
-import           Optics.Prism
-import           Optics.AffineTraversal
-import           Optics.Setter
-import           Optics.AffineFold
-import           Data.Tuple.Optics
+import           Optician.Optics
+import Optics.Re
+import Optics.ReadOnly
+import Optics.State
 
 f :: Foo
 f = Foo 9 "a"
