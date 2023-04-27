@@ -20,6 +20,7 @@ library
     import:           warnings
     exposed-modules:  Optician,
                       Optician.Label,
+                      Optician.Optics,
                       Optician.Internal
     other-modules: Optician.GhcFacade,
                    Optician.Inputs,
@@ -36,6 +37,7 @@ library
     default-extensions: LambdaCase
     build-depends:    base >=4.17.0.0,
                       optics-core >= 0.4,
+                      optics-extra,
                       ghc-tcplugin-api >= 0.10,
                       ghc >= 9.4,
                       transformers

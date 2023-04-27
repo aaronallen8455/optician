@@ -59,10 +59,8 @@ for a prism (GHC 9.6 and above only). For example:
 ```haskell
 {-# LANGUAGE OverloadedLabels #-}
 
-import Optician
 import Optician.Label
-import Optics.Optic
-import Optics.AffineTraversal
+import Optician.Optics
 
 data Foo = Foo { foo :: Bar }
 data Bar = Bar { bar :: Maybe Bool }
@@ -71,9 +69,10 @@ fooBar :: AffineTraversal' Foo Bool
 fooBar = #foo % #bar % #Just
 ```
 
-> Note: `Optician.Label` cannot be imported in conjunction with the
-> `Optics` module (which re-exports `Optics.Label`) because of the conflicting
-> `IsLabel` instance.
+> Note: `Optician.Label` cannot be imported in conjunction with the `Optics`
+> module (which re-exports `Optics.Label`) because of the conflicting `IsLabel`
+> instance. Instead you should import `Optician.Optics`, which does not
+> re-export `Optics.Label` but has everything else.
 
 ## Limitations
  - Currently only GHC 9.4.x and 9.6.x are supported
