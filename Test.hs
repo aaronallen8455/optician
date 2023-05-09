@@ -98,7 +98,7 @@ p5 = _Ctor @"Su21"
 -- p5 = _Ctor @"Su22"
 
 p6 :: AffineTraversal' (Su2 Double) Int
-p6 = #Su22 % _2 % #Just % #Su22 % _2 % #Just % #Su23 % #a
+p6 = _Ctor @"Su22" % _2 % _Ctor @"Just" % _Ctor @"Su22" % _2 % _Ctor @"Just" % _Ctor @"Su23" % #a
 
 data CtxSum a b where
   CS1 :: (Show a, Eq b, Eq a) => a -> b -> CtxSum a b
@@ -109,7 +109,7 @@ cs1 = CS1 9.1 "9.1"
 cs2 = CS2 20.9
 
 csp :: (Show a, Eq d, Eq a) => Prism (CtxSum a b) (CtxSum a d) (a, b) (a, d)
-csp = #CS1
+csp = _Ctor @"CS1"
 
 data Phan a (b :: Type) = Phan { p1 :: a }
 
@@ -121,7 +121,7 @@ data Foo' = Foo' { foo :: Bar' }
 data Bar' = Bar' { bar' :: Maybe Bool }
 
 fooBar :: AffineTraversal' Foo' Bool
-fooBar = #foo % #bar' % #Just
+fooBar = #foo % #bar' % _Ctor @"Just"
 
 data Person = MkPerson
   { name :: String

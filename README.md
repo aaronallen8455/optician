@@ -51,28 +51,22 @@ getDogName = preview (_Ctor @"Dog")
 
 ## Support for `OverloadedLabels`
 
-You can use the `OverloadedLabels` extension to generate optics instead of
-`field` and `_Ctor` for greater terseness. To do this, import the
-`Optician.Label` module and write `#fieldName` for a lens or `#ConstructorName`
-for a prism (GHC 9.6 and above only). For example:
+For greater terseness, you can use the `OverloadedLabels` extension to generate
+lenses instead of using `field`. To do this, import the `Optician.Label` module
+and write `#fieldName`. For example:
 
 ```haskell
 {-# LANGUAGE OverloadedLabels #-}
 
 import Optician.Label
-import Optician.Optics ((%), AffineTraversal')
+import Optics ((%))
 
 data Foo = Foo { foo :: Bar }
-data Bar = Bar { bar :: Maybe Bool }
+data Bar = Bar { bar :: Bool }
 
-fooBar :: AffineTraversal' Foo Bool
-fooBar = #foo % #bar % #Just
+fooBar :: Lens' Foo Bool
+fooBar = #foo % #bar
 ```
-
-> Note: `Optician.Label` cannot be imported in conjunction with the `Optics`
-> module (which re-exports `Optics.Label`) because of the conflicting `IsLabel`
-> instance. Instead you should import `Optician.Optics`, which does not
-> re-export `Optics.Label` but has most other exports.
 
 ## Limitations
  - Currently only GHC 9.4.x and 9.6.x are supported
