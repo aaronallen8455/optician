@@ -6,7 +6,14 @@ import           Data.Kind
 
 import           Optician
 import           Optician.Label
-import           Optician.Optics
+import Optics.Lens
+import Optics.AffineTraversal
+import Optics.AffineFold
+import Optics.Setter
+import Optics.Prism
+import Optics.Review
+import Optics.Optic
+import Data.Tuple.Optics
 import Optics.Re
 import Optics.ReadOnly
 import Optics.State
@@ -137,3 +144,13 @@ data Pet
 
 getDogName :: Pet -> Maybe String
 getDogName = preview (_Ctor @"Dog")
+
+data Gadt1 a where
+  Gc1 :: Show x => x -> String -> Gadt1 Bool
+  Gc2 :: (Eq a) => Bool -> a -> Gadt1 a
+
+-- mkGc1 :: (Bool, String) -> Gadt1 Bool
+-- mkGc1 = review (_Ctor @"Gc1") -- (a, b) = Gc1 a b
+
+mkGc2 :: Eq a => (Bool, a) -> Gadt1 a
+mkGc2 = review (_Ctor @"Gc2") -- (a, b) = Gc1 a b

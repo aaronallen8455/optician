@@ -60,11 +60,17 @@ dataConNotInScope = do
 data Exist where
   Exist :: { ex1 :: a } -> Exist
 
+exist :: Exist
+exist = Exist ()
+
 selectorHasExistential :: Assertion
 selectorHasExistential = do
   let l = field @"ex1" @Exist
   checkTypeError "Cannot make a lens for a field with an existential type"
     $ Exist True ^. l
+
+  checkTypeError "Cannot make a lens for a field with an existential type"
+    $ exist & field @"ex1" .~ True
 
 data Rec2 = Rec2 Bool String
 
@@ -85,9 +91,12 @@ data ExistSum where
   ES2 :: Int -> ExistSum
 
 dataConHasExistentials :: Assertion
-dataConHasExistentials =
+dataConHasExistentials = do
   checkTypeError "Cannot make a prism for a data constructor with an existential type"
     $ ES1 () ^? _Ctor @"ES1"
+
+  checkTypeError "Cannot make a prism for a data constructor with an existential type"
+    (review (_Ctor @"ES1") () :: ExistSum)
 
 data Show a => StupidTheta a = StupidTheta { st1 :: a, st2 :: Bool }
 

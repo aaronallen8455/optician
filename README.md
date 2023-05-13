@@ -29,8 +29,7 @@ getDogName = preview (_Ctor @"Dog")
 ```
 
 ## Features
- - Exceptional ergonomics - optics are automatically available for in-scope
-   data constructors
+ - Optics are automatically available for in-scope data constructors
  - Improved compilation speed compared to Generics and Template Haskell based
    optics solutions
  - Supports polymorphic updates

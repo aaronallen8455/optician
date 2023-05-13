@@ -4,6 +4,7 @@ module Optician.Rewrite.GenTypeEqualities.Lens
   ( lensTyEqPairs
   ) where
 
+import           Control.Monad (guard)
 import qualified GHC.TcPlugin.API as P
 
 import qualified Optician.GhcFacade as Ghc
@@ -32,5 +33,12 @@ lensTyEqPairs fieldName tyCon dataCon sTyArgs tTyArgs aTy bTy = do
     (sTy, tTy, label) <- zip3 sFieldTys tFieldTys fieldLabels
 
     if label == Ghc.FieldLabelString' fieldName
-       then [(sTy, aTy), (tTy, bTy)]
+       then do
+         -- Don't generate constraints if the field is existential because they
+         -- can cause insolubles with variables of unknown origin. The user
+         -- should instead get the custom error thrown from the solver.
+         guard (not $ any (Ghc.eqType sTy) existTys)
+
+         [(sTy, aTy), (tTy, bTy)]
+
        else [(sTy, tTy)]
